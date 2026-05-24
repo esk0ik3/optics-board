@@ -278,8 +278,8 @@ function CustomUI({ editor }: { editor: any }) {
       rotation: 0,
       props: {
         geo: 'rectangle',
-        w: 40,
-        h: 20,
+        w: 80,
+        h: 40,
         color: 'black',
         fill: 'solid',
       },
@@ -300,8 +300,8 @@ function CustomUI({ editor }: { editor: any }) {
       rotation: 0,
       props: {
         geo: 'rectangle',
-        w: 40,
-        h: 20,
+        w: 80,
+        h: 40,
         color: 'black',
         fill: 'solid',
       },
@@ -728,8 +728,8 @@ export default function App() {
         if (laser.type === 'geo') {
           const transform = editor.getShapePageTransform(laser.id)
           if (!transform) continue
-          const w = laser.props.w || 40
-          const h = laser.props.h || 20
+          const w = laser.props.w || 80
+          const h = laser.props.h || 40
           
           // 発射口は右側の中央 (w, h/2)
           const startLocal = { x: w, y: h / 2 }
