@@ -303,7 +303,7 @@ function CustomUI({ editor }: { editor: any }) {
 
   return (
     <>
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000, width: 180, background: 'rgba(255,255,255,0.95)', padding: 12, borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+      <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 1000, width: 180, background: 'rgba(255,255,255,0.95)', padding: 12, borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
         <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '8px', color: '#333', textAlign: 'center' }}>レンズを追加</div>
         <button style={{ ...btnStyle, backgroundColor: '#2563eb' }} onClick={addDoubleConvex}>
           両凸レンズ
@@ -332,7 +332,7 @@ function CustomUI({ editor }: { editor: any }) {
       </div>
 
       {selectedOptics.length === 1 && (
-        <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'rgba(255,255,255,0.95)', padding: '12px 24px', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'rgba(255,255,255,0.95)', padding: '12px 24px', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '120px' }}>
             焦点距離: {(selectedOptics[0] as any).props.focalLength}
           </label>
