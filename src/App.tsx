@@ -178,7 +178,19 @@ const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil]
 
 function CustomUI({ editor }: { editor: any }) {
   const selectedShapes = useValue('selected shapes', () => editor.getSelectedShapes(), [editor])
-  const selectedOptics = selectedShapes.filter((s: any) => s.type === 'optics-lens' || (s.type === 'optics-mirror' && s.props.mirrorType === 'curved'))
+  const selectedShape = selectedShapes.length === 1 ? selectedShapes[0] : null
+
+  let currentAngle = 0
+  if (selectedShape) {
+    if (selectedShape.type === 'arrow') {
+      const start = selectedShape.props.start || { x: 0, y: 0 }
+      const end = selectedShape.props.end || { x: 100, y: 0 }
+      currentAngle = Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI
+    } else {
+      currentAngle = (selectedShape.rotation || 0) * 180 / Math.PI
+    }
+    currentAngle = Math.round(currentAngle * 10) / 10
+  }
 
   const [isOpen, setIsOpen] = useState(false)
   const [isHorizontal, setIsHorizontal] = useState(true)
@@ -192,7 +204,7 @@ function CustomUI({ editor }: { editor: any }) {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).tagName === 'BUTTON') return
-    (e.target as HTMLElement).setPointerCapture(e.pointerId)
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     setIsDragging(true)
     setDragOffset({
       x: e.clientX - pos.x,
@@ -216,7 +228,7 @@ function CustomUI({ editor }: { editor: any }) {
 
   const handleSliderPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).tagName === 'INPUT') return
-    (e.target as HTMLElement).setPointerCapture(e.pointerId)
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     setIsSliderDragging(true)
     setSliderDragOffset({
       x: e.clientX - sliderPos.x,
@@ -422,7 +434,7 @@ function CustomUI({ editor }: { editor: any }) {
         )}
       </div>
 
-      {selectedOptics.length === 1 && (
+      {selectedShape && (
         <div 
           style={{ 
             position: 'absolute', 
@@ -434,8 +446,8 @@ function CustomUI({ editor }: { editor: any }) {
             borderRadius: 12, 
             boxShadow: '0 4px 12px rgba(0,0,0,0.2)', 
             display: 'flex', 
-            alignItems: 'center', 
-            gap: '16px',
+            flexDirection: 'column',
+            gap: '12px',
             cursor: isSliderDragging ? 'grabbing' : 'grab',
             touchAction: 'none',
             userSelect: 'none'
@@ -445,26 +457,85 @@ function CustomUI({ editor }: { editor: any }) {
           onPointerUp={handleSliderPointerUp}
           onPointerCancel={handleSliderPointerUp}
         >
-          <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '120px' }}>
-            焦点距離: {(selectedOptics[0] as any).props.focalLength}
-          </label>
-          <input
-            type="range"
-            min={-500}
-            max={500}
-            step={10}
-            value={(selectedOptics[0] as any).props.focalLength || 150}
-            onChange={(e) => {
-              let val = Number(e.target.value)
-              if (val === 0) val = 10 // 0除算防止
-              editor.updateShape({
-                id: selectedOptics[0].id,
-                type: selectedOptics[0].type,
-                props: { focalLength: val }
-              } as any)
-            }}
-            style={{ width: '200px', cursor: 'pointer' }}
-          />
+          <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', textAlign: 'center', marginBottom: '4px' }}>
+            詳細プロパティ
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <label style={{ fontSize: '13px', color: '#333' }}>X: 
+              <input 
+                type="number" 
+                value={Math.round(selectedShape.x)} 
+                onChange={(e) => editor.updateShape({ id: selectedShape.id, type: selectedShape.type, x: Number(e.target.value) } as any)}
+                style={{ width: '60px', marginLeft: '4px' }}
+              />
+            </label>
+            <label style={{ fontSize: '13px', color: '#333' }}>Y: 
+              <input 
+                type="number" 
+                value={Math.round(selectedShape.y)} 
+                onChange={(e) => editor.updateShape({ id: selectedShape.id, type: selectedShape.type, y: Number(e.target.value) } as any)}
+                style={{ width: '60px', marginLeft: '4px' }}
+              />
+            </label>
+            <label style={{ fontSize: '13px', color: '#333' }}>角度(度): 
+              <input 
+                type="number" 
+                value={currentAngle} 
+                onChange={(e) => {
+                  const newAngleDeg = Number(e.target.value)
+                  const newAngleRad = newAngleDeg * Math.PI / 180
+                  if (selectedShape.type === 'arrow') {
+                    const start = selectedShape.props.start || { x: 0, y: 0 }
+                    const end = selectedShape.props.end || { x: 100, y: 0 }
+                    const len = Math.sqrt((end.x - start.x)**2 + (end.y - start.y)**2) || 100
+                    editor.updateShape({
+                      id: selectedShape.id,
+                      type: selectedShape.type,
+                      props: {
+                        end: {
+                          x: start.x + len * Math.cos(newAngleRad),
+                          y: start.y + len * Math.sin(newAngleRad)
+                        }
+                      }
+                    } as any)
+                  } else {
+                    editor.updateShape({
+                      id: selectedShape.id,
+                      type: selectedShape.type,
+                      rotation: newAngleRad
+                    } as any)
+                  }
+                }}
+                style={{ width: '60px', marginLeft: '4px' }}
+              />
+            </label>
+          </div>
+
+          {(selectedShape.type === 'optics-lens' || (selectedShape.type === 'optics-mirror' && selectedShape.props.mirrorType === 'curved')) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '90px' }}>
+                焦点距離: {selectedShape.props.focalLength}
+              </label>
+              <input
+                type="range"
+                min={-500}
+                max={500}
+                step={10}
+                value={selectedShape.props.focalLength || 150}
+                onChange={(e) => {
+                  let val = Number(e.target.value)
+                  if (val === 0) val = 10 
+                  editor.updateShape({
+                    id: selectedShape.id,
+                    type: selectedShape.type,
+                    props: { focalLength: val }
+                  } as any)
+                }}
+                style={{ width: '150px', cursor: 'pointer' }}
+              />
+            </div>
+          )}
         </div>
       )}
     </>
