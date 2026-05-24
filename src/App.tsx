@@ -75,24 +75,51 @@ export class OpticsLensUtil extends ShapeUtil<OpticsLensShape> {
       if (inward > w * 0.45) inward = w * 0.45
       pathD = `M 0 0 L ${w} 0 Q ${w - inward} ${h / 2} ${w} ${h} L 0 ${h} Q ${inward} ${h / 2} 0 0 Z`
     } else if (lensType === 'plano-convex') {
-      let offset = (300 / focalLength) * (w * 1.5)
-      if (offset < -w * 0.1) offset = -w * 0.1
-      pathD = `M 0 0 L 0 ${h} Q ${offset} ${h / 2} 0 0 Z`
+      let offset = (300 / focalLength) * (w * 0.8)
+      if (offset < -w * 0.8) offset = -w * 0.8
+      // 左側が平らで、右側が膨らむ（全体がw/2を中心に配置されるように調整）
+      pathD = `M ${w * 0.2} 0 L ${w * 0.2} ${h} Q ${w * 0.2 + offset} ${h / 2} ${w * 0.2} 0 Z`
     } else if (lensType === 'plano-concave') {
       let inward = -(300 / focalLength) * (w / 3)
-      if (inward > w * 0.9) inward = w * 0.9
-      pathD = `M 0 0 L ${w} 0 Q ${w - inward} ${h / 2} ${w} ${h} L 0 ${h} Z`
+      if (inward > w * 0.7) inward = w * 0.7
+      // 左側が平らで、右側がへこむ
+      pathD = `M ${w * 0.2} 0 L ${w} 0 Q ${w - inward} ${h / 2} ${w} ${h} L ${w * 0.2} ${h} Z`
     }
 
     return (
       <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
         <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          <defs>
+            <linearGradient id={`glass-${shape.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255, 255, 255, 0.7)" />
+              <stop offset="15%" stopColor="rgba(147, 197, 253, 0.3)" />
+              <stop offset="85%" stopColor="rgba(59, 130, 246, 0.15)" />
+              <stop offset="100%" stopColor="rgba(255, 255, 255, 0.5)" />
+            </linearGradient>
+            <linearGradient id={`highlight-${shape.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255, 255, 255, 0.8)" />
+              <stop offset="20%" stopColor="rgba(255, 255, 255, 0)" />
+            </linearGradient>
+          </defs>
+
+          {/* ガラス本体 */}
           <path
             d={pathD}
-            fill="rgba(59, 130, 246, 0.25)"
-            stroke="#2563eb"
-            strokeWidth={2}
+            fill={`url(#glass-${shape.id})`}
+            stroke="#3b82f6"
+            strokeWidth={1.5}
+            style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }}
           />
+          
+          {/* 上部のハイライト（立体感） */}
+          <path
+            d={pathD}
+            fill={`url(#highlight-${shape.id})`}
+            pointerEvents="none"
+          />
+
+          {/* 物理的な中心線（破線） */}
+          <line x1={w / 2} y1={-10} x2={w / 2} y2={h + 10} stroke="#94a3b8" strokeWidth={1} strokeDasharray="4,4" />
         </svg>
       </SVGContainer>
     )
