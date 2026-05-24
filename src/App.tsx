@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
   Tldraw,
-  useEditor,
   useValue,
   getIndexAbove,
   IndexKey,
