@@ -698,19 +698,10 @@ export default function App() {
       const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
       const laserIds = new Set(lasers.map((l: any) => l.id))
 
-      // レーザーが存在しない古い光線を削除する
-      const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
-      const laserBaseIds = new Set(Array.from(laserIds).map((id: any) => id.replace('shape:', '')))
-      const raysToDelete = existingRays
-        .filter((r: any) => {
-          // r.id format: shape:ray-xxxxx-idx
-          const hasParent = Array.from(laserBaseIds).some((baseId: any) => r.id.startsWith(`shape:ray-${baseId}`))
-          return !hasParent
-        })
-        .map((r: any) => r.id)
-      
-      if (raysToDelete.length > 0) {
-        editor.deleteShapes(raysToDelete)
+      // まずキャンバス上の全ての既存光線を一掃する（確実なクリーンアップ）
+      const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-')).map((s: any) => s.id)
+      if (existingRays.length > 0) {
+        editor.deleteShapes(existingRays)
       }
 
       // 各レーザーの光線追跡
@@ -770,12 +761,8 @@ export default function App() {
         let V_orig = { x: V_dir_orig.x / len_orig, y: V_dir_orig.y / len_orig }
         let U_orig = { x: -V_orig.y, y: V_orig.x } // 法線ベクトル（進行方向に垂直）
 
-        // このレーザーのすべての既存光線を削除
+        // (既存光線の削除は一括で行っているため不要)
         const laserBaseId = laser.id.replace('shape:', '')
-        const existingRaysForLaser = existingRays.filter((r: any) => r.id.startsWith(`shape:ray-${laserBaseId}`)).map((r: any) => r.id)
-        if (existingRaysForLaser.length > 0) {
-          editor.deleteShapes(existingRaysForLaser)
-        }
 
         for (let rayIdx = 0; rayIdx < rayCount; rayIdx++) {
           let p1 = { ...p1_orig }
@@ -1064,9 +1051,9 @@ export default function App() {
 
       // 全ての図形の変更を検知して更新する（パフォーマンス上の問題はないため確実性を優先）
       const hasOpticsChanges =
-        Object.values(event.changes.added).some((s: any) => s.typeName === 'shape') ||
-        Object.values(event.changes.removed).some((s: any) => s.typeName === 'shape') ||
-        Object.values(event.changes.updated).some(([, newShape]: any) => newShape.typeName === 'shape')
+        Object.keys(event.changes.added).length > 0 ||
+        Object.keys(event.changes.removed).length > 0 ||
+        Object.keys(event.changes.updated).length > 0
 
       if (hasOpticsChanges) {
         isUpdating = true
