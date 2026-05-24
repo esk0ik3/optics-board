@@ -882,7 +882,14 @@ export default function App() {
 
           if (!closestIntersection) {
             if (currentDepth === 0) {
-              relativePoints.length = 0
+              if (rayCount > 1) {
+                // 平行光源の場合は、障害物がなくても矢印の長さまで全ての光線を描画する
+                relativePoints.push({ x: 0, y: 0 })
+                relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
+              } else {
+                // 単一レーザーの場合、tldrawの矢印自体が描画されるので重ねて描画する必要はない
+                relativePoints.length = 0
+              }
             } else {
               // 交点がない場合は画面外へ光線を伸ばして終了
               const endPt = { x: P.x + V.x * 2000, y: P.y + V.y * 2000 }
@@ -894,13 +901,14 @@ export default function App() {
           const { pt: I, type: hitType, shape: hitShape, A, B } = closestIntersection
           
           if (currentDepth === 0) {
-            if (closestIntersection.t < len - 0.1) {
-              // 先端の自動スナップ機能は削除
-              relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
-            } else {
+            // 光線の起点を常に矢印の根元 (p1) にする
+            relativePoints.push({ x: 0, y: 0 })
+            
+            if (closestIntersection.t >= len - 0.1) {
+              // レンズが矢印の先端より遠い場合は、先端を経由させる
               relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
-              relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
             }
+            relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
           } else {
             relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
           }
