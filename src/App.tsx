@@ -176,8 +176,7 @@ export class OpticsMirrorUtil extends ShapeUtil<OpticsMirrorShape> {
 const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil]
 
 // --- CustomUI Component ---
-function CustomUI() {
-  const editor = useEditor()
+function CustomUI({ editor }: { editor: any }) {
   const selectedShapes = useValue('selected shapes', () => editor.getSelectedShapes(), [editor])
   const selectedOptics = selectedShapes.filter((s: any) => s.type === 'optics-lens' || (s.type === 'optics-mirror' && s.props.mirrorType === 'curved'))
 
@@ -666,9 +665,8 @@ export default function App() {
       <Tldraw
         shapeUtils={customShapeUtils}
         onMount={(ed) => setEditor(ed)}
-      >
-        <CustomUI />
-      </Tldraw>
+      />
+      {editor && <CustomUI editor={editor} />}
     </div>
   )
 }
