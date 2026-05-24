@@ -176,10 +176,38 @@ export class OpticsMirrorUtil extends ShapeUtil<OpticsMirrorShape> {
 
 const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil]
 
-// --- CustomUI Component ---
 function CustomUI({ editor }: { editor: any }) {
   const selectedShapes = useValue('selected shapes', () => editor.getSelectedShapes(), [editor])
   const selectedOptics = selectedShapes.filter((s: any) => s.type === 'optics-lens' || (s.type === 'optics-mirror' && s.props.mirrorType === 'curved'))
+
+  const [isOpen, setIsOpen] = useState(false)
+  const [pos, setPos] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight / 2 - 30 : 300 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).tagName === 'BUTTON') return
+    e.target.setPointerCapture(e.pointerId)
+    setIsDragging(true)
+    setDragOffset({
+      x: e.clientX - pos.x,
+      y: e.clientY - pos.y
+    })
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return
+    setPos({
+      x: e.clientX - dragOffset.x,
+      y: e.clientY - dragOffset.y
+    })
+  }
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDragging) return
+    setIsDragging(false)
+    e.target.releasePointerCapture(e.pointerId)
+  }
 
   // 各種レンズを追加するマクロ
   const addDoubleConvex = () => {
@@ -297,38 +325,62 @@ function CustomUI({ editor }: { editor: any }) {
     border: 'none', 
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-    width: '100%',
-    marginBottom: '8px'
+    width: 'auto'
   }
 
   return (
     <>
-      <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 1000, width: 180, background: 'rgba(255,255,255,0.95)', padding: 12, borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '8px', color: '#333', textAlign: 'center' }}>レンズを追加</div>
-        <button style={{ ...btnStyle, backgroundColor: '#2563eb' }} onClick={addDoubleConvex}>
-          両凸レンズ
-        </button>
-        <button style={{ ...btnStyle, backgroundColor: '#1d4ed8' }} onClick={addDoubleConcave}>
-          両凹レンズ
-        </button>
-        <button style={{ ...btnStyle, backgroundColor: '#3b82f6' }} onClick={addPlanoConvex}>
-          平凸レンズ
-        </button>
-        <button style={{ ...btnStyle, backgroundColor: '#60a5fa' }} onClick={addPlanoConcave}>
-          平凹レンズ
-        </button>
+      <div 
+        style={{ 
+          position: 'absolute', 
+          top: pos.y, 
+          left: pos.x, 
+          zIndex: 1000, 
+          background: 'rgba(255,255,255,0.95)', 
+          padding: 12, 
+          borderRadius: 12, 
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          touchAction: 'none',
+          userSelect: 'none'
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isOpen ? '12px' : '0' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>
+            🛠 光学素子メニュー
+          </div>
+          <button 
+            style={{ marginLeft: '24px', cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}
+            onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
+          >
+            {isOpen ? '閉じる' : '開く'}
+          </button>
+        </div>
 
-        <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }}></div>
-        <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '8px', color: '#333', textAlign: 'center' }}>鏡を追加</div>
-        <button style={{ ...btnStyle, backgroundColor: '#64748b' }} onClick={addFlatMirror}>
-          平面鏡
-        </button>
-        <button style={{ ...btnStyle, backgroundColor: '#475569' }} onClick={addConcaveMirror}>
-          凹面鏡
-        </button>
-        <button style={{ ...btnStyle, backgroundColor: '#334155' }} onClick={addConvexMirror}>
-          凸面鏡
-        </button>
+        {isOpen && (
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>レンズ:</span>
+              <button style={{ ...btnStyle, backgroundColor: '#2563eb' }} onClick={addDoubleConvex}>両凸</button>
+              <button style={{ ...btnStyle, backgroundColor: '#1d4ed8' }} onClick={addDoubleConcave}>両凹</button>
+              <button style={{ ...btnStyle, backgroundColor: '#3b82f6' }} onClick={addPlanoConvex}>平凸</button>
+              <button style={{ ...btnStyle, backgroundColor: '#60a5fa' }} onClick={addPlanoConcave}>平凹</button>
+            </div>
+            
+            <div style={{ width: '1px', height: '24px', background: '#cbd5e1' }}></div>
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>鏡:</span>
+              <button style={{ ...btnStyle, backgroundColor: '#64748b' }} onClick={addFlatMirror}>平面</button>
+              <button style={{ ...btnStyle, backgroundColor: '#475569' }} onClick={addConcaveMirror}>凹面</button>
+              <button style={{ ...btnStyle, backgroundColor: '#334155' }} onClick={addConvexMirror}>凸面</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedOptics.length === 1 && (
