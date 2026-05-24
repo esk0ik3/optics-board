@@ -69,7 +69,8 @@ export class OpticsLensUtil extends ShapeUtil<OpticsLensShape> {
     if (lensType === 'double-convex') {
       let offset = (150 / focalLength) * (w / 2)
       if (offset < -w * 0.9) offset = -w * 0.9
-      pathD = `M ${w / 2} 0 Q ${w / 2 + offset} ${h / 2} ${w / 2} ${h} Q ${w / 2 - offset} ${h / 2} ${w / 2} 0 Z`
+      let edge = 3 // エッジの厚み
+      pathD = `M ${w / 2 - edge} 0 L ${w / 2 + edge} 0 Q ${w / 2 + offset} ${h / 2} ${w / 2 + edge} ${h} L ${w / 2 - edge} ${h} Q ${w / 2 - offset} ${h / 2} ${w / 2 - edge} 0 Z`
     } else if (lensType === 'double-concave') {
       let inward = -(150 / focalLength) * (w / 3)
       if (inward > w * 0.45) inward = w * 0.45
@@ -77,8 +78,9 @@ export class OpticsLensUtil extends ShapeUtil<OpticsLensShape> {
     } else if (lensType === 'plano-convex') {
       let offset = (300 / focalLength) * (w * 0.8)
       if (offset < -w * 0.8) offset = -w * 0.8
+      let edge = 3 // エッジの厚み
       // 左側が平らで、右側が膨らむ（全体がw/2を中心に配置されるように調整）
-      pathD = `M ${w * 0.2} 0 L ${w * 0.2} ${h} Q ${w * 0.2 + offset} ${h / 2} ${w * 0.2} 0 Z`
+      pathD = `M ${w * 0.2} 0 L ${w * 0.2 + edge} 0 Q ${w * 0.2 + offset} ${h / 2} ${w * 0.2 + edge} ${h} L ${w * 0.2} ${h} Z`
     } else if (lensType === 'plano-concave') {
       let inward = -(300 / focalLength) * (w / 3)
       if (inward > w * 0.7) inward = w * 0.7
