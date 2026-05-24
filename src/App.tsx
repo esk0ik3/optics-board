@@ -268,6 +268,26 @@ function CustomUI({ editor }: { editor: any }) {
     ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
   }
 
+  // 光源を追加するマクロ
+  const addLaser = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'arrow',
+      x: center.x - 50,
+      y: center.y,
+      props: {
+        color: 'green',
+        arrowheadEnd: 'none',
+        start: { x: 0, y: 0 },
+        end: { x: 100, y: 0 }
+      },
+      meta: {
+        isOpticsLaser: true,
+        wavelength: 532
+      }
+    })
+  }
+
   // 各種レンズを追加するマクロ
   const addDoubleConvex = () => {
     const center = editor.getViewportPageBounds().center
@@ -431,7 +451,12 @@ function CustomUI({ editor }: { editor: any }) {
         </div>
 
         {isOpen && (
-          <div style={{ display: 'flex', gap: '16px', alignItems: isHorizontal ? 'center' : 'stretch', flexDirection: isHorizontal ? 'row' : 'column' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: isHorizontal ? 'flex-start' : 'stretch', flexDirection: isHorizontal ? 'row' : 'column' }}>
+            <div style={{ display: 'flex', gap: '8px', flexDirection: isHorizontal ? 'row' : 'column' }}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: isHorizontal ? 'center' : 'flex-start', color: '#475569', marginRight: isHorizontal ? '4px' : '0', marginBottom: isHorizontal ? '0' : '4px' }}>光源:</span>
+              <button style={{ ...btnStyle, backgroundColor: '#10b981', width: isHorizontal ? 'auto' : '100%' }} onClick={addLaser}>レーザー</button>
+            </div>
+            {isHorizontal && <div style={{ width: '1px', background: '#cbd5e1', alignSelf: 'stretch' }} />}
             <div style={{ display: 'flex', gap: '8px', flexDirection: isHorizontal ? 'row' : 'column' }}>
               <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: isHorizontal ? 'center' : 'flex-start', color: '#475569', marginRight: isHorizontal ? '4px' : '0', marginBottom: isHorizontal ? '0' : '4px' }}>レンズ:</span>
               <button style={{ ...btnStyle, backgroundColor: '#2563eb', width: isHorizontal ? 'auto' : '100%' }} onClick={addDoubleConvex}>両凸</button>
@@ -606,7 +631,7 @@ export default function App() {
 
     const updateRays = () => {
       const shapes = editor.getCurrentPageShapes()
-      const lasers = shapes.filter((s: any) => s.type === 'arrow')
+      const lasers = shapes.filter((s: any) => s.type === 'arrow' && (s.meta?.isOpticsLaser || s.meta?.wavelength))
       const lenses = shapes.filter((s: any) => s.type === 'optics-lens')
       const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
       const laserIds = new Set(lasers.map((l: any) => l.id))
@@ -941,19 +966,6 @@ export default function App() {
       if (hasOpticsChanges) {
         isUpdating = true
         try {
-          const addedArrows = Object.values(event.changes.added).filter((s: any) => s.type === 'arrow')
-          for (const arr of addedArrows) {
-            const arrowShape = arr as any
-            if (!arrowShape.meta.wavelength) {
-              editor.updateShape({
-                id: arrowShape.id,
-                type: 'arrow',
-                props: { ...arrowShape.props, color: 'green' },
-                meta: { ...arrowShape.meta, wavelength: 532 }
-              } as any)
-            }
-          }
-
           updateRays()
         } catch (err) {
           console.error("Raytracing error:", err)
