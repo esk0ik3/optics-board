@@ -187,7 +187,7 @@ function CustomUI({ editor }: { editor: any }) {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).tagName === 'BUTTON') return
-    e.target.setPointerCapture(e.pointerId)
+    (e.target as HTMLElement).setPointerCapture(e.pointerId)
     setIsDragging(true)
     setDragOffset({
       x: e.clientX - pos.x,
@@ -206,7 +206,7 @@ function CustomUI({ editor }: { editor: any }) {
   const handlePointerUp = (e: React.PointerEvent) => {
     if (!isDragging) return
     setIsDragging(false)
-    e.target.releasePointerCapture(e.pointerId)
+    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
   }
 
   // 各種レンズを追加するマクロ
