@@ -869,7 +869,7 @@ export default function App() {
 
         if (relativePoints.length <= 1) {
           if (existingRay) {
-            editor.deleteShape(rayId)
+            editor.deleteShapes([rayId])
           }
           continue
         }
@@ -884,7 +884,7 @@ export default function App() {
         })
 
         if (existingRay) {
-          editor.deleteShape(rayId)
+          editor.deleteShapes([rayId])
         }
         
         editor.createShape({
