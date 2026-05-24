@@ -1267,7 +1267,7 @@ export default function App() {
               let closestIntersection: {
                 t: number
                 pt: { x: number; y: number }
-                type: 'lens' | 'mirror' | 'splitter' | 'screen' | 'prism' | 'glass-block'
+                type: 'lens' | 'mirror' | 'splitter' | 'screen' | 'prism' | 'glass-block' | 'water-drop'
                 shape: any
                 A: { x: number; y: number }
                 B: { x: number; y: number }
