@@ -697,10 +697,11 @@ export default function App() {
       const lenses = shapes.filter((s: any) => s.type === 'optics-lens')
       const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
 
-      // まずキャンバス上の全ての既存光線を一掃する（確実なクリーンアップ）
-      const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-')).map((s: any) => s.id)
+      // まずキャンバス上の全ての既存光線を一掃する（ロックされていると削除できないためロックを解除してから削除）
+      const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
       if (existingRays.length > 0) {
-        editor.deleteShapes(existingRays)
+        editor.updateShapes(existingRays.map((s: any) => ({ id: s.id, type: s.type, isLocked: false })))
+        editor.deleteShapes(existingRays.map((s: any) => s.id))
       }
 
       // 各レーザーの光線追跡
