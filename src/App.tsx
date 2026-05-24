@@ -7,7 +7,7 @@ import {
   ShapeUtil,
   SVGContainer,
   Rectangle2d,
-  TLShape,
+  TLBaseShape,
 } from 'tldraw'
 import 'tldraw/tldraw.css'
 
@@ -31,7 +31,12 @@ declare module 'tldraw' {
   }
 }
 
-export type OpticsLensShape = TLShape<'optics-lens'>
+export type OpticsLensShape = TLBaseShape<'optics-lens', {
+  w: number
+  h: number
+  focalLength: number
+  lensType: 'double-convex' | 'double-concave' | 'plano-convex' | 'plano-concave'
+}>
 
 export class OpticsLensUtil extends ShapeUtil<OpticsLensShape> {
   static override type = LENS_SHAPE_TYPE
@@ -96,16 +101,17 @@ export class OpticsLensUtil extends ShapeUtil<OpticsLensShape> {
   override indicator(shape: OpticsLensShape) {
     return <rect width={shape.props.w} height={shape.props.h} fill="none" stroke="#2563eb" strokeWidth={1.5} />
   }
-
-  override getIndicatorPath() {
-    return undefined
-  }
 }
 
 // --- Custom Mirror Shape Definition ---
 const MIRROR_SHAPE_TYPE = 'optics-mirror' as const
 
-export type OpticsMirrorShape = TLShape<'optics-mirror'>
+export type OpticsMirrorShape = TLBaseShape<'optics-mirror', {
+  w: number
+  h: number
+  mirrorType: 'flat' | 'curved'
+  focalLength?: number
+}>
 
 export class OpticsMirrorUtil extends ShapeUtil<OpticsMirrorShape> {
   static override type = MIRROR_SHAPE_TYPE
@@ -165,10 +171,6 @@ export class OpticsMirrorUtil extends ShapeUtil<OpticsMirrorShape> {
 
   override indicator(shape: OpticsMirrorShape) {
     return <rect width={shape.props.w} height={shape.props.h} fill="none" stroke="#64748b" strokeWidth={1.5} />
-  }
-
-  override getIndicatorPath() {
-    return undefined
   }
 }
 
