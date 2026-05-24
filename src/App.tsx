@@ -909,6 +909,19 @@ export default function App() {
       if (hasOpticsChanges) {
         isUpdating = true
         try {
+          const addedArrows = Object.values(event.changes.added).filter((s: any) => s.type === 'arrow')
+          for (const arr of addedArrows) {
+            const arrowShape = arr as any
+            if (!arrowShape.meta.wavelength) {
+              editor.updateShape({
+                id: arrowShape.id,
+                type: 'arrow',
+                props: { ...arrowShape.props, color: 'green' },
+                meta: { ...arrowShape.meta, wavelength: 532 }
+              } as any)
+            }
+          }
+
           updateRays()
         } catch (err) {
           console.error("Raytracing error:", err)
