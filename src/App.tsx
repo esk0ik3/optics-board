@@ -696,7 +696,6 @@ export default function App() {
       const lasers = shapes.filter((s: any) => (s.type === 'geo' || s.type === 'arrow') && (s.meta?.isOpticsLaser || s.meta?.wavelength))
       const lenses = shapes.filter((s: any) => s.type === 'optics-lens')
       const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
-      const laserIds = new Set(lasers.map((l: any) => l.id))
 
       // まずキャンバス上の全ての既存光線を一掃する（確実なクリーンアップ）
       const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-')).map((s: any) => s.id)
