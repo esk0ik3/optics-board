@@ -367,8 +367,8 @@ function CustomUI({ editor }: { editor: any }) {
       rotation: 0,
       props: {
         geo: 'rectangle',
-        w: 100,
-        h: 70,
+        w: 120,
+        h: 75,
         color: 'black',
         fill: 'solid',
       },
@@ -389,8 +389,8 @@ function CustomUI({ editor }: { editor: any }) {
       rotation: 0,
       props: {
         geo: 'rectangle',
-        w: 100,
-        h: 70,
+        w: 120,
+        h: 75,
         color: 'black',
         fill: 'solid',
       },
