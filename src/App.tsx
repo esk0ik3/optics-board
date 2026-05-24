@@ -277,6 +277,7 @@ function CustomUI({ editor }: { editor: any }) {
       y: center.y,
       props: {
         color: 'green',
+        dash: 'solid',
         arrowheadEnd: 'none',
         start: { x: 0, y: 0 },
         end: { x: 100, y: 0 }
@@ -941,7 +942,7 @@ export default function App() {
           props: {
             color: rayColor,
             dash: 'solid',
-            size: 's',
+            size: laser.props.size || 'm',
             spline: 'line', // 角を丸めない（完全な直線）
             points
           },
