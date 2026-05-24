@@ -289,6 +289,29 @@ function CustomUI({ editor }: { editor: any }) {
     })
   }
 
+  // 平行光源を追加するマクロ
+  const addParallelLaser = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'arrow',
+      x: center.x - 50,
+      y: center.y,
+      props: {
+        color: 'green',
+        dash: 'solid',
+        arrowheadEnd: 'none',
+        start: { x: 0, y: 0 },
+        end: { x: 100, y: 0 }
+      },
+      meta: {
+        isOpticsLaser: true,
+        wavelength: 532,
+        rayCount: 5,
+        beamWidth: 40
+      }
+    })
+  }
+
   // 各種レンズを追加するマクロ
   const addDoubleConvex = () => {
     const center = editor.getViewportPageBounds().center
@@ -456,6 +479,7 @@ function CustomUI({ editor }: { editor: any }) {
             <div style={{ display: 'flex', gap: '8px', flexDirection: isHorizontal ? 'row' : 'column' }}>
               <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: isHorizontal ? 'center' : 'flex-start', color: '#475569', marginRight: isHorizontal ? '4px' : '0', marginBottom: isHorizontal ? '0' : '4px' }}>光源:</span>
               <button style={{ ...btnStyle, backgroundColor: '#10b981', width: isHorizontal ? 'auto' : '100%' }} onClick={addLaser}>レーザー</button>
+              <button style={{ ...btnStyle, backgroundColor: '#059669', width: isHorizontal ? 'auto' : '100%' }} onClick={addParallelLaser}>平行光源</button>
             </div>
             {isHorizontal && <div style={{ width: '1px', background: '#cbd5e1', alignSelf: 'stretch' }} />}
             <div style={{ display: 'flex', gap: '8px', flexDirection: isHorizontal ? 'row' : 'column' }}>
@@ -557,26 +581,69 @@ function CustomUI({ editor }: { editor: any }) {
           </div>
 
           {selectedShape.type === 'arrow' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
-              <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', minWidth: '65px' }}>
-                波長 (nm):
-              </label>
-              <input
-                type="number"
-                value={selectedShape.meta.wavelength ?? 532}
-                onChange={(e) => handleWavelengthChange(Number(e.target.value))}
-                style={{ width: '60px' }}
-              />
-              <input
-                type="range"
-                min={400}
-                max={700}
-                step={1}
-                value={selectedShape.meta.wavelength ?? 532}
-                onChange={(e) => handleWavelengthChange(Number(e.target.value))}
-                style={{ width: '100px', cursor: 'pointer' }}
-              />
-            </div>
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', minWidth: '65px' }}>
+                  波長 (nm):
+                </label>
+                <input
+                  type="number"
+                  value={selectedShape.meta.wavelength ?? 532}
+                  onChange={(e) => handleWavelengthChange(Number(e.target.value))}
+                  style={{ width: '60px' }}
+                />
+                <input
+                  type="range"
+                  min={400}
+                  max={700}
+                  step={1}
+                  value={selectedShape.meta.wavelength ?? 532}
+                  onChange={(e) => handleWavelengthChange(Number(e.target.value))}
+                  style={{ width: '100px', cursor: 'pointer' }}
+                />
+              </div>
+
+              {selectedShape.meta.rayCount !== undefined && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+                    <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', minWidth: '65px' }}>
+                      光線の数:
+                    </label>
+                    <input
+                      type="number"
+                      value={selectedShape.meta.rayCount ?? 5}
+                      onChange={(e) => editor.updateShape({ id: selectedShape.id, type: selectedShape.type, meta: { ...selectedShape.meta, rayCount: Number(e.target.value) } } as any)}
+                      style={{ width: '60px' }}
+                    />
+                    <input
+                      type="range"
+                      min={2} max={21} step={1}
+                      value={selectedShape.meta.rayCount ?? 5}
+                      onChange={(e) => editor.updateShape({ id: selectedShape.id, type: selectedShape.type, meta: { ...selectedShape.meta, rayCount: Number(e.target.value) } } as any)}
+                      style={{ width: '100px', cursor: 'pointer' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+                    <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', minWidth: '65px' }}>
+                      ビーム幅:
+                    </label>
+                    <input
+                      type="number"
+                      value={selectedShape.meta.beamWidth ?? 40}
+                      onChange={(e) => editor.updateShape({ id: selectedShape.id, type: selectedShape.type, meta: { ...selectedShape.meta, beamWidth: Number(e.target.value) } } as any)}
+                      style={{ width: '60px' }}
+                    />
+                    <input
+                      type="range"
+                      min={10} max={200} step={5}
+                      value={selectedShape.meta.beamWidth ?? 40}
+                      onChange={(e) => editor.updateShape({ id: selectedShape.id, type: selectedShape.type, meta: { ...selectedShape.meta, beamWidth: Number(e.target.value) } } as any)}
+                      style={{ width: '100px', cursor: 'pointer' }}
+                    />
+                  </div>
+                </>
+              )}
+            </>
           )}
 
           {(selectedShape.type === 'optics-lens' || (selectedShape.type === 'optics-mirror' && selectedShape.props.mirrorType === 'curved')) && (
@@ -639,10 +706,12 @@ export default function App() {
 
       // レーザーが存在しない古い光線を削除する
       const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
+      const laserBaseIds = new Set(Array.from(laserIds).map((id: string) => id.replace('shape:', '')))
       const raysToDelete = existingRays
         .filter((r: any) => {
-          const laserId = r.id.replace('shape:ray-', '')
-          return !laserIds.has(laserId)
+          // r.id format: shape:ray-xxxxx-idx
+          const hasParent = Array.from(laserBaseIds).some((baseId: string) => r.id.startsWith(`shape:ray-${baseId}`))
+          return !hasParent
         })
         .map((r: any) => r.id)
       
@@ -657,13 +726,14 @@ export default function App() {
 
         const startProp = laser.props.start || { x: 0, y: 0 }
         const endProp = laser.props.end || { x: 100, y: 0 }
-        // 矢印が図形にスナップ（バインド）されている場合、x, yがundefinedになるため0にフォールバックしてNaNを防ぐ
         const start = { x: startProp.x ?? 0, y: startProp.y ?? 0 }
         const end = { x: endProp.x ?? 100, y: endProp.y ?? 0 }
-        const p1 = transform.applyToPoint(start)
-        const p2 = transform.applyToPoint(end)
+        const p1_orig = transform.applyToPoint(start)
+        const p2_orig = transform.applyToPoint(end)
 
         const wl = (laser.meta && laser.meta.wavelength) ? Number(laser.meta.wavelength) : 532
+        const rayCount = (laser.meta && laser.meta.rayCount !== undefined) ? Math.max(1, Number(laser.meta.rayCount)) : 1
+        const beamWidth = (laser.meta && laser.meta.beamWidth !== undefined) ? Number(laser.meta.beamWidth) : 40
         
         let rayColor = 'green'
         if (wl < 450) rayColor = 'violet'
@@ -673,26 +743,47 @@ export default function App() {
         else if (wl < 650) rayColor = 'orange'
         else rayColor = 'red'
 
-        // 屈折率の分散モデル（波長が短いほど屈折率が高く、よく曲がる）
-        // 基準波長532nmでn=1.5とする
+        // 屈折率の分散モデル
         const n_base = 1.5
         const n_wl = 1.5 + (532 - wl) * 0.0001
         const f_dispersion_ratio = (n_base - 1) / (n_wl - 1)
 
-        let P = { ...p1 } // 光線の現在地（最初はレーザーの末尾）
-        let V_dir = { x: p2.x - p1.x, y: p2.y - p1.y }
-        let len = Math.sqrt(V_dir.x * V_dir.x + V_dir.y * V_dir.y)
-        if (len < 5) continue
+        let V_dir_orig = { x: p2_orig.x - p1_orig.x, y: p2_orig.y - p1_orig.y }
+        let len_orig = Math.sqrt(V_dir_orig.x * V_dir_orig.x + V_dir_orig.y * V_dir_orig.y)
+        if (len_orig < 5) continue
 
-        let V = { x: V_dir.x / len, y: V_dir.y / len } // 単位方向ベクトル
+        let V_orig = { x: V_dir_orig.x / len_orig, y: V_dir_orig.y / len_orig }
+        let U_orig = { x: -V_orig.y, y: V_orig.x } // 法線ベクトル（進行方向に垂直）
 
-        // 光線パスの点リスト（p1基準の相対座標）
-        const relativePoints: Array<{ x: number; y: number }> = []
-        
-        let currentDepth = 0
-        const maxDepth = 10 // 少し余裕を持たせる
+        // このレーザーのすべての既存光線を削除
+        const laserBaseId = laser.id.replace('shape:', '')
+        const existingRaysForLaser = existingRays.filter((r: any) => r.id.startsWith(`shape:ray-${laserBaseId}`)).map((r: any) => r.id)
+        if (existingRaysForLaser.length > 0) {
+          editor.deleteShapes(existingRaysForLaser)
+        }
 
-        while (currentDepth < maxDepth) {
+        for (let rayIdx = 0; rayIdx < rayCount; rayIdx++) {
+          let p1 = { ...p1_orig }
+          let p2 = { ...p2_orig }
+
+          if (rayCount > 1) {
+            const offsetAmount = -beamWidth / 2 + (rayIdx / (rayCount - 1)) * beamWidth
+            p1 = { x: p1_orig.x + U_orig.x * offsetAmount, y: p1_orig.y + U_orig.y * offsetAmount }
+            p2 = { x: p2_orig.x + U_orig.x * offsetAmount, y: p2_orig.y + U_orig.y * offsetAmount }
+          }
+
+          let P = { ...p1 } // 光線の現在地
+          let V_dir = { x: p2.x - p1.x, y: p2.y - p1.y }
+          let len = Math.sqrt(V_dir.x * V_dir.x + V_dir.y * V_dir.y)
+          let V = { x: V_dir.x / len, y: V_dir.y / len } // 単位方向ベクトル
+
+          // 光線パスの点リスト（p1基準の相対座標）
+          const relativePoints: Array<{ x: number; y: number }> = []
+          
+          let currentDepth = 0
+          const maxDepth = 10 // 少し余裕を持たせる
+
+          while (currentDepth < maxDepth) {
           let closestIntersection: {
             t: number
             pt: { x: number; y: number }
@@ -804,17 +895,18 @@ export default function App() {
           
           if (currentDepth === 0) {
             if (closestIntersection.t < len - 0.1) {
-              const scale = closestIntersection.t / len
-              const snappedEnd = {
-                x: start.x + (end.x - start.x) * scale,
-                y: start.y + (end.y - start.y) * scale
+              if (rayCount === 1 || rayIdx === Math.floor(rayCount / 2)) {
+                const scale = closestIntersection.t / len
+                const snappedEnd = {
+                  x: start.x + (end.x - start.x) * scale,
+                  y: start.y + (end.y - start.y) * scale
+                }
+                editor.updateShape({
+                  id: laser.id,
+                  type: laser.type,
+                  props: { ...laser.props, end: snappedEnd }
+                } as any)
               }
-              editor.updateShape({
-                id: laser.id,
-                type: laser.type,
-                props: { ...laser.props, end: snappedEnd }
-              } as any)
-              
               relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
             } else {
               relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
@@ -911,13 +1003,9 @@ export default function App() {
           currentDepth++
         }
 
-        const rayId = `shape:ray-${laser.id}` as any
-        const existingRay = editor.getShape(rayId)
+        const rayId = `shape:ray-${laserBaseId}-${rayIdx}` as any
 
         if (relativePoints.length <= 1) {
-          if (existingRay) {
-            editor.deleteShapes([rayId])
-          }
           continue
         }
 
@@ -929,10 +1017,6 @@ export default function App() {
           points[key] = { id: key, index: currentIndex, x: pt.x, y: pt.y }
           currentIndex = getIndexAbove(currentIndex)
         })
-
-        if (existingRay) {
-          editor.deleteShapes([rayId])
-        }
         
         editor.createShape({
           id: rayId,
@@ -948,7 +1032,8 @@ export default function App() {
           },
           isLocked: true
         })
-      }
+      } // end rayIdx loop
+    } // end laser loop
     }
 
     // 初回実行
