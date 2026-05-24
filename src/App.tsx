@@ -513,10 +513,22 @@ function CustomUI({ editor }: { editor: any }) {
           </div>
 
           {selectedShape.type === 'arrow' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
-              <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '90px' }}>
-                波長 (nm): {selectedShape.meta.wavelength ?? 532}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', minWidth: '65px' }}>
+                波長 (nm):
               </label>
+              <input
+                type="number"
+                value={selectedShape.meta.wavelength ?? 532}
+                onChange={(e) => {
+                  editor.updateShape({
+                    id: selectedShape.id,
+                    type: selectedShape.type,
+                    meta: { ...selectedShape.meta, wavelength: Number(e.target.value) }
+                  } as any)
+                }}
+                style={{ width: '60px' }}
+              />
               <input
                 type="range"
                 min={400}
@@ -530,16 +542,30 @@ function CustomUI({ editor }: { editor: any }) {
                     meta: { ...selectedShape.meta, wavelength: Number(e.target.value) }
                   } as any)
                 }}
-                style={{ width: '150px', cursor: 'pointer' }}
+                style={{ width: '100px', cursor: 'pointer' }}
               />
             </div>
           )}
 
           {(selectedShape.type === 'optics-lens' || (selectedShape.type === 'optics-mirror' && selectedShape.props.mirrorType === 'curved')) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
-              <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '90px' }}>
-                焦点距離: {selectedShape.props.focalLength}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', minWidth: '65px' }}>
+                焦点距離:
               </label>
+              <input
+                type="number"
+                value={selectedShape.props.focalLength || 150}
+                onChange={(e) => {
+                  let val = Number(e.target.value)
+                  if (val === 0) val = 10 
+                  editor.updateShape({
+                    id: selectedShape.id,
+                    type: selectedShape.type,
+                    props: { focalLength: val }
+                  } as any)
+                }}
+                style={{ width: '60px' }}
+              />
               <input
                 type="range"
                 min={-500}
@@ -555,7 +581,7 @@ function CustomUI({ editor }: { editor: any }) {
                     props: { focalLength: val }
                   } as any)
                 }}
-                style={{ width: '150px', cursor: 'pointer' }}
+                style={{ width: '100px', cursor: 'pointer' }}
               />
             </div>
           )}
