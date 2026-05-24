@@ -8,6 +8,7 @@ import {
   SVGContainer,
   Rectangle2d,
   Polygon2d,
+  Ellipse2d,
   Vec,
   TLBaseShape,
 } from 'tldraw'
@@ -462,7 +463,57 @@ export class OpticsGlassBlockUtil extends ShapeUtil<OpticsGlassBlockShape> {
   }
 }
 
-const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil, OpticsSplitterUtil, OpticsCubeSplitterUtil, OpticsScreenUtil, OpticsPrismUtil, OpticsGlassBlockUtil]
+// --- Optics Water Drop Shape ---
+export type OpticsWaterDropShape = TLBaseShape<'optics-water-drop', {
+  w: number
+  h: number
+}>
+
+export class OpticsWaterDropUtil extends ShapeUtil<OpticsWaterDropShape> {
+  static override type = 'optics-water-drop' as const
+  override isAspectRatioLocked = () => true
+  override canEdit = () => false
+  override canResize = () => false
+
+  override getDefaultProps(): OpticsWaterDropShape['props'] {
+    return {
+      w: 160,
+      h: 160,
+    }
+  }
+
+  override getGeometry(shape: OpticsWaterDropShape) {
+    return new Ellipse2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true,
+    })
+  }
+
+  override component(shape: OpticsWaterDropShape) {
+    const { w, h } = shape.props
+    return (
+      <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          <ellipse cx={w/2} cy={h/2} rx={w/2} ry={h/2} fill="rgba(200, 240, 255, 0.4)" stroke="#38bdf8" strokeWidth={2} />
+          <defs>
+            <linearGradient id={`drop-grad-${shape.id}`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.7)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+            </linearGradient>
+          </defs>
+          <ellipse cx={w/2} cy={h/2} rx={w/2} ry={h/2} fill={`url(#drop-grad-${shape.id})`} />
+        </svg>
+      </SVGContainer>
+    )
+  }
+
+  override indicator(shape: OpticsWaterDropShape) {
+    return <ellipse cx={shape.props.w/2} cy={shape.props.h/2} rx={shape.props.w/2} ry={shape.props.h/2} fill="none" stroke="#38bdf8" strokeWidth={1.5} />
+  }
+}
+
+const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil, OpticsSplitterUtil, OpticsCubeSplitterUtil, OpticsScreenUtil, OpticsPrismUtil, OpticsGlassBlockUtil, OpticsWaterDropUtil]
 
 function CustomUI({ editor }: { editor: any }) {
   const selectedShapes = useValue('selected shapes', () => editor.getSelectedShapes(), [editor])
@@ -776,6 +827,15 @@ function CustomUI({ editor }: { editor: any }) {
     })
   }
 
+  const addWaterDrop = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-water-drop',
+      x: center.x - 80,
+      y: center.y - 80,
+    })
+  }
+
   // ボタンのデザイン設定
   const btnStyle = {
     padding: '4px 8px',
@@ -880,6 +940,7 @@ function CustomUI({ editor }: { editor: any }) {
               <button style={{ ...btnStyle, backgroundColor: '#1e293b' }} onClick={addScreen}>スクリーン</button>
               <button style={{ ...btnStyle, backgroundColor: '#8b5cf6' }} onClick={addPrism}>プリズム</button>
               <button style={{ ...btnStyle, backgroundColor: '#6366f1' }} onClick={addGlassBlock}>ガラスブロック</button>
+              <button style={{ ...btnStyle, backgroundColor: '#0ea5e9' }} onClick={addWaterDrop}>水滴</button>
             </div>
           </div>
         )}
@@ -1097,6 +1158,7 @@ export default function App() {
       const screens = shapes.filter((s: any) => s.type === 'optics-screen')
       const prisms = shapes.filter((s: any) => s.type === 'optics-prism')
       const glassBlocks = shapes.filter((s: any) => s.type === 'optics-glass-block')
+      const waterDrops = shapes.filter((s: any) => s.type === 'optics-water-drop')
 
       // まずキャンバス上の全ての既存光線を一掃する（ロックされていると削除できないためロックを解除してから削除）
       const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
@@ -1351,6 +1413,42 @@ export default function App() {
                 }))
               ]
 
+              // --- 水滴との交差 ---
+              for (const drop of waterDrops) {
+                const transform = editor.getShapePageTransform(drop.id)
+                if (!transform) continue
+                const r = (drop.props.w || 160) / 2
+                const C = transform.applyToPoint({ x: r, y: r })
+                
+                const dx = P.x - C.x
+                const dy = P.y - C.y
+                const b = 2 * (V.x * dx + V.y * dy)
+                const c = dx * dx + dy * dy - r * r
+                const D = b * b - 4 * c
+                
+                if (D >= 0) {
+                  const sqrtD = Math.sqrt(D)
+                  const t1 = (-b - sqrtD) / 2
+                  const t2 = (-b + sqrtD) / 2
+                  
+                  let t = -1
+                  if (t1 >= 1e-3 && t2 >= 1e-3) t = Math.min(t1, t2)
+                  else if (t1 >= 1e-3) t = t1
+                  else if (t2 >= 1e-3) t = t2
+                  
+                  if (t >= 1e-3) {
+                    if (!closestIntersection || t < closestIntersection.t) {
+                      const pt = { x: P.x + t * V.x, y: P.y + t * V.y }
+                      let N = { x: (pt.x - C.x) / r, y: (pt.y - C.y) / r }
+                      if (V.x * N.x + V.y * N.y > 0) {
+                        N = { x: -N.x, y: -N.y }
+                      }
+                      closestIntersection = { t, pt, type: 'water-drop', shape: drop, A: C, B: C, normal: N }
+                    }
+                  }
+                }
+              }
+
               for (const poly of polygons) {
                 const transform = editor.getShapePageTransform(poly.shape.id)
                 if (!transform) continue
@@ -1419,18 +1517,44 @@ export default function App() {
                 // 吸収して終了
                 break
               }
-              else if (hitType === 'prism' || hitType === 'glass-block') {
+              else if (hitType === 'prism' || hitType === 'glass-block' || hitType === 'water-drop') {
                 const N = closestIntersection.normal!
                 const c1 = V.x * N.x + V.y * N.y
                 let isEntering = c1 < 0
-                let n1 = isEntering ? 1.0 : n_wl
-                let n2 = isEntering ? n_wl : 1.0
+                
+                let my_n_wl = n_wl
+                if (hitType === 'water-drop') {
+                  my_n_wl = 1.333 + (532 - wl) * 0.00004
+                }
+
+                let n1 = isEntering ? 1.0 : my_n_wl
+                let n2 = isEntering ? my_n_wl : 1.0
                 
                 let N_calc = isEntering ? N : { x: -N.x, y: -N.y }
                 let cosI = isEntering ? -c1 : c1
 
-                const r = n1 / n2
-                const sinT2Sq = r * r * (1 - cosI * cosI)
+                const r_ratio = n1 / n2
+                const sinT2Sq = r_ratio * r_ratio * (1 - cosI * cosI)
+
+                if (hitType === 'water-drop' && !isEntering) {
+                  // 部分反射をシミュレート
+                  const queueItem = queue[0] || {}
+                  const waterBounces = (queueItem as any).waterBounces || 0
+                  if (waterBounces < 2) { // 主虹・副虹のために最大2回反射
+                    const dotVal = V.x * N_calc.x + V.y * N_calc.y
+                    const reflectV = { x: V.x - 2 * dotVal * N_calc.x, y: V.y - 2 * dotVal * N_calc.y }
+                    const reflectP = { x: I.x + reflectV.x * 1e-2, y: I.y + reflectV.y * 1e-2 }
+                    queue.push({
+                      P: reflectP,
+                      V: reflectV,
+                      branchId: (queueItem as any).branchId + 'R',
+                      depth: depth + 1,
+                      startAbs: reflectP,
+                      isFirstBranch: false,
+                      waterBounces: waterBounces + 1
+                    } as any)
+                  }
+                }
 
                 if (sinT2Sq > 1.0) {
                   // 全反射
@@ -1441,8 +1565,8 @@ export default function App() {
                   // 屈折
                   const cosT = Math.sqrt(1.0 - sinT2Sq)
                   V = {
-                    x: r * V.x + (r * cosI - cosT) * N_calc.x,
-                    y: r * V.y + (r * cosI - cosT) * N_calc.y
+                    x: r_ratio * V.x + (r_ratio * cosI - cosT) * N_calc.x,
+                    y: r_ratio * V.y + (r_ratio * cosI - cosT) * N_calc.y
                   }
                   const vLen = Math.sqrt(V.x*V.x + V.y*V.y)
                   V = { x: V.x / vLen, y: V.y / vLen }
