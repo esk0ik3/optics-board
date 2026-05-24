@@ -599,7 +599,8 @@ function CustomUI({ editor }: { editor: any }) {
           boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
           cursor: isDragging ? 'grabbing' : 'grab',
           touchAction: 'none',
-          userSelect: 'none'
+          userSelect: 'none',
+          maxWidth: isHorizontal ? '650px' : '200px'
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -641,7 +642,7 @@ function CustomUI({ editor }: { editor: any }) {
         </div>
 
         {isOpen && (
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexDirection: isHorizontal ? 'row' : 'column' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexDirection: isHorizontal ? 'row' : 'column', flexWrap: isHorizontal ? 'wrap' : 'nowrap' }}>
             <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>光源:</span>
               <button style={{ ...btnStyle, backgroundColor: '#10b981' }} onClick={addLaser}>レーザー</button>
