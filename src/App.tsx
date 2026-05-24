@@ -272,15 +272,16 @@ function CustomUI({ editor }: { editor: any }) {
   const addLaser = () => {
     const center = editor.getViewportPageBounds().center
     editor.createShape({
-      type: 'arrow',
-      x: center.x - 50,
-      y: center.y,
+      type: 'geo',
+      x: center.x - 20,
+      y: center.y - 10,
+      rotation: 0,
       props: {
-        color: 'green',
-        dash: 'solid',
-        arrowheadEnd: 'none',
-        start: { x: 0, y: 0 },
-        end: { x: 100, y: 0 }
+        geo: 'rectangle',
+        w: 40,
+        h: 20,
+        color: 'black',
+        fill: 'solid',
       },
       meta: {
         isOpticsLaser: true,
@@ -293,15 +294,16 @@ function CustomUI({ editor }: { editor: any }) {
   const addParallelLaser = () => {
     const center = editor.getViewportPageBounds().center
     editor.createShape({
-      type: 'arrow',
-      x: center.x - 50,
-      y: center.y,
+      type: 'geo',
+      x: center.x - 20,
+      y: center.y - 10,
+      rotation: 0,
       props: {
-        color: 'green',
-        dash: 'solid',
-        arrowheadEnd: 'none',
-        start: { x: 0, y: 0 },
-        end: { x: 100, y: 0 }
+        geo: 'rectangle',
+        w: 40,
+        h: 20,
+        color: 'black',
+        fill: 'solid',
       },
       meta: {
         isOpticsLaser: true,
@@ -580,7 +582,7 @@ function CustomUI({ editor }: { editor: any }) {
             </label>
           </div>
 
-          {selectedShape.type === 'arrow' && (
+          {selectedShape.meta?.isOpticsLaser && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
                 <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', minWidth: '65px' }}>
@@ -699,7 +701,7 @@ export default function App() {
 
     const updateRays = () => {
       const shapes = editor.getCurrentPageShapes()
-      const lasers = shapes.filter((s: any) => s.type === 'arrow' && (s.meta?.isOpticsLaser || s.meta?.wavelength))
+      const lasers = shapes.filter((s: any) => (s.type === 'geo' || s.type === 'arrow') && (s.meta?.isOpticsLaser || s.meta?.wavelength))
       const lenses = shapes.filter((s: any) => s.type === 'optics-lens')
       const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
       const laserIds = new Set(lasers.map((l: any) => l.id))
@@ -721,15 +723,36 @@ export default function App() {
 
       // 各レーザーの光線追跡
       for (const laser of lasers) {
-        const transform = editor.getShapePageTransform(laser.id)
-        if (!transform) continue
+        let p1_orig, p2_orig
 
-        const startProp = laser.props.start || { x: 0, y: 0 }
-        const endProp = laser.props.end || { x: 100, y: 0 }
-        const start = { x: startProp.x ?? 0, y: startProp.y ?? 0 }
-        const end = { x: endProp.x ?? 100, y: endProp.y ?? 0 }
-        const p1_orig = transform.applyToPoint(start)
-        const p2_orig = transform.applyToPoint(end)
+        if (laser.type === 'geo') {
+          const transform = editor.getShapePageTransform(laser.id)
+          if (!transform) continue
+          const w = laser.props.w || 40
+          const h = laser.props.h || 20
+          
+          // 発射口は右側の中央 (w, h/2)
+          const startLocal = { x: w, y: h / 2 }
+          p1_orig = transform.applyToPoint(startLocal)
+          
+          // 方向ベクトルは回転角度から計算
+          const angle = laser.rotation || 0
+          const dx = Math.cos(angle)
+          const dy = Math.sin(angle)
+          
+          // 便宜上のp2 (計算用)
+          p2_orig = { x: p1_orig.x + dx * 100, y: p1_orig.y + dy * 100 }
+        } else {
+          // 互換性のため古いarrowにも対応
+          const transform = editor.getShapePageTransform(laser.id)
+          if (!transform) continue
+          const startProp = laser.props.start || { x: 0, y: 0 }
+          const endProp = laser.props.end || { x: 100, y: 0 }
+          const start = { x: startProp.x ?? 0, y: startProp.y ?? 0 }
+          const end = { x: endProp.x ?? 100, y: endProp.y ?? 0 }
+          p1_orig = transform.applyToPoint(start)
+          p2_orig = transform.applyToPoint(end)
+        }
 
         const wl = (laser.meta && laser.meta.wavelength) ? Number(laser.meta.wavelength) : 532
         const rayCount = (laser.meta && laser.meta.rayCount !== undefined) ? Math.max(1, Number(laser.meta.rayCount)) : 1
@@ -882,12 +905,18 @@ export default function App() {
 
           if (!closestIntersection) {
             if (currentDepth === 0) {
-              if (rayCount > 1) {
-                // 平行光源の場合は、障害物がなくても矢印の長さまで全ての光線を描画する
+              if (laser.type === 'geo') {
+                const drawLen = 2000
+                const vx = (p2.x - p1.x) / Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2)
+                const vy = (p2.y - p1.y) / Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2)
+                relativePoints.push({ x: 0, y: 0 })
+                relativePoints.push({ x: vx * drawLen, y: vy * drawLen })
+              } else if (rayCount > 1) {
+                // 古い矢印の平行光源の場合は、障害物がなくても矢印の長さまで全ての光線を描画する
                 relativePoints.push({ x: 0, y: 0 })
                 relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
               } else {
-                // 単一レーザーの場合、tldrawの矢印自体が描画されるので重ねて描画する必要はない
+                // 古い矢印の単一レーザーの場合
                 relativePoints.length = 0
               }
             } else {
