@@ -174,7 +174,53 @@ export class OpticsMirrorUtil extends ShapeUtil<OpticsMirrorShape> {
   }
 }
 
-const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil]
+// --- Optics Splitter Shape ---
+export type OpticsSplitterShape = TLBaseShape<'optics-splitter', {
+  w: number
+  h: number
+}>
+
+export class OpticsSplitterUtil extends ShapeUtil<OpticsSplitterShape> {
+  static override type = 'optics-splitter' as const
+  override isAspectRatioLocked = () => false
+  override canEdit = () => false
+  override canResize = () => false
+
+  override getDefaultProps(): OpticsSplitterShape['props'] {
+    return {
+      w: 20,
+      h: 160,
+    }
+  }
+
+  override getGeometry(shape: OpticsSplitterShape) {
+    return new Rectangle2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true,
+    })
+  }
+
+  override component(shape: OpticsSplitterShape) {
+    const { w, h } = shape.props
+
+    return (
+      <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          <rect width={w} height={h} fill="rgba(6, 182, 212, 0.1)" stroke="#06b6d4" strokeWidth={2} />
+          {/* 反射面（中央） */}
+          <line x1={w / 2} y1={0} x2={w / 2} y2={h} stroke="#0891b2" strokeWidth={2} strokeDasharray="4,4" />
+        </svg>
+      </SVGContainer>
+    )
+  }
+
+  override indicator(shape: OpticsSplitterShape) {
+    return <rect width={shape.props.w} height={shape.props.h} fill="none" stroke="#0891b2" strokeWidth={1.5} />
+  }
+}
+
+const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil, OpticsSplitterUtil]
 
 function CustomUI({ editor }: { editor: any }) {
   const selectedShapes = useValue('selected shapes', () => editor.getSelectedShapes(), [editor])
@@ -368,6 +414,19 @@ function CustomUI({ editor }: { editor: any }) {
   }
 
   // 鏡を追加するマクロ
+  const addBeamSplitter = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-splitter',
+      x: center.x - 10,
+      y: center.y - 80,
+      props: {
+        w: 20,
+        h: 160,
+      },
+    })
+  }
+
   const addFlatMirror = () => {
     const center = editor.getViewportPageBounds().center
     editor.createShape({
@@ -488,6 +547,7 @@ function CustomUI({ editor }: { editor: any }) {
             
             <div style={{ display: 'flex', gap: '8px', flexDirection: isHorizontal ? 'row' : 'column' }}>
               <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: isHorizontal ? 'center' : 'flex-start', color: '#475569', marginRight: isHorizontal ? '4px' : '0', marginBottom: isHorizontal ? '0' : '4px' }}>鏡:</span>
+              <button style={{ ...btnStyle, backgroundColor: '#0891b2', width: isHorizontal ? 'auto' : '100%' }} onClick={addBeamSplitter}>スプリッター</button>
               <button style={{ ...btnStyle, backgroundColor: '#64748b', width: isHorizontal ? 'auto' : '100%' }} onClick={addFlatMirror}>平面</button>
               <button style={{ ...btnStyle, backgroundColor: '#475569', width: isHorizontal ? 'auto' : '100%' }} onClick={addConcaveMirror}>凹面</button>
               <button style={{ ...btnStyle, backgroundColor: '#334155', width: isHorizontal ? 'auto' : '100%' }} onClick={addConvexMirror}>凸面</button>
@@ -696,6 +756,7 @@ export default function App() {
       const lasers = shapes.filter((s: any) => (s.type === 'geo' || s.type === 'arrow') && (s.meta?.isOpticsLaser || s.meta?.wavelength))
       const lenses = shapes.filter((s: any) => s.type === 'optics-lens')
       const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
+      const splitters = shapes.filter((s: any) => s.type === 'optics-splitter')
 
       // まずキャンバス上の全ての既存光線を一掃する（ロックされていると削除できないためロックを解除してから削除）
       const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
@@ -774,270 +835,255 @@ export default function App() {
             p2 = { x: p2_orig.x + U_orig.x * offsetAmount, y: p2_orig.y + U_orig.y * offsetAmount }
           }
 
-          let P = { ...p1 } // 光線の現在地
-          let V_dir = { x: p2.x - p1.x, y: p2.y - p1.y }
-          let len = Math.sqrt(V_dir.x * V_dir.x + V_dir.y * V_dir.y)
-          let V = { x: V_dir.x / len, y: V_dir.y / len } // 単位方向ベクトル
+          let initialV_dir = { x: p2.x - p1.x, y: p2.y - p1.y }
+          let initialLen = Math.sqrt(initialV_dir.x * initialV_dir.x + initialV_dir.y * initialV_dir.y)
+          let initialV = { x: initialV_dir.x / initialLen, y: initialV_dir.y / initialLen }
 
-          // 光線パスの点リスト（p1基準の相対座標）
-          const relativePoints: Array<{ x: number; y: number }> = []
-          
-          let currentDepth = 0
-          const maxDepth = 10 // 少し余裕を持たせる
+          // レイトレーシングをキュー構造で実行する（分岐に対応）
+          const queue = [{
+            P: p1,
+            V: initialV,
+            branchId: `${rayIdx}`,
+            depth: 0,
+            startAbs: p1,
+            isFirstBranch: true
+          }]
 
-          while (currentDepth < maxDepth) {
-          let closestIntersection: {
-            t: number
-            pt: { x: number; y: number }
-            type: 'lens' | 'mirror'
-            shape: any
-            A: { x: number; y: number }
-            B: { x: number; y: number }
-          } | null = null
-
-          // すべてのレンズについて一番近い交点を探す
-          for (const lens of lenses) {
-            const lTransform = editor.getShapePageTransform(lens.id)
-            if (!lTransform) continue
-
-            const lw = lens.props.w || 40
-            const lh = lens.props.h || 160
-
-            // レンズの軸は常にy軸に沿って描画されるため固定
-            const localA = { x: lw / 2, y: 0 }
-            const localB = { x: lw / 2, y: lh }
-
-            const A = lTransform.applyToPoint(localA)
-            const B = lTransform.applyToPoint(localB)
-
-            // 光線とレンズ線分の交点計算
-            const segDx = B.x - A.x
-            const segDy = B.y - A.y
-            const det = V.y * segDx - V.x * segDy
-
-            if (Math.abs(det) > 1e-6) {
-              const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
-              const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
-
-              if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
-                if (!closestIntersection || t < closestIntersection.t) {
-                  closestIntersection = {
-                    t,
-                    pt: { x: P.x + t * V.x, y: P.y + t * V.y },
-                    type: 'lens',
-                    shape: lens,
-                    A,
-                    B
-                  }
-                }
-              }
-            }
-          }
-
-          // すべての鏡について一番近い交点を探す
-          for (const mirror of mirrors) {
-            const mTransform = editor.getShapePageTransform(mirror.id)
-            if (!mTransform) continue
-
-            const mw = mirror.props.w || 20
-            const mh = mirror.props.h || 160
-
-            // 描画と反射面を完全に一致させる
-            let localA = { x: 0, y: 0 }
-            let localB = { x: 0, y: mh }
+          while (queue.length > 0) {
+            const currentRay = queue.shift()!
+            let { P, V, branchId, depth, startAbs, isFirstBranch } = currentRay
             
-            if (mirror.props.mirrorType === 'flat') {
-              localA = { x: 0, y: 0 }
-              localB = { x: 0, y: mh }
-            } else {
-              // 曲面鏡の場合は両端を結ぶ直線(弦)を交差判定に使用
-              localA = { x: mw, y: 0 }
-              localB = { x: mw, y: mh }
-            }
-
-            const A = mTransform.applyToPoint(localA)
-            const B = mTransform.applyToPoint(localB)
-
-            // 交点計算
-            const segDx = B.x - A.x
-            const segDy = B.y - A.y
-            const det = V.y * segDx - V.x * segDy
-
-            if (Math.abs(det) > 1e-6) {
-              const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
-              const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
-
-              if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
-                if (!closestIntersection || t < closestIntersection.t) {
-                  closestIntersection = {
-                    t,
-                    pt: { x: P.x + t * V.x, y: P.y + t * V.y },
-                    type: 'mirror',
-                    shape: mirror,
-                    A,
-                    B
-                  }
-                }
-              }
-            }
-          }
-
-          if (!closestIntersection) {
-            if (currentDepth === 0) {
-              if (laser.type === 'geo') {
-                const drawLen = 2000
-                const vx = (p2.x - p1.x) / Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2)
-                const vy = (p2.y - p1.y) / Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2)
-                relativePoints.push({ x: 0, y: 0 })
-                relativePoints.push({ x: vx * drawLen, y: vy * drawLen })
-              } else if (rayCount > 1) {
-                // 古い矢印の平行光源の場合は、障害物がなくても矢印の長さまで全ての光線を描画する
-                relativePoints.push({ x: 0, y: 0 })
-                relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
-              } else {
-                // 古い矢印の単一レーザーの場合
-                relativePoints.length = 0
-              }
-            } else {
-              // 交点がない場合は画面外へ光線を伸ばして終了
-              const endPt = { x: P.x + V.x * 2000, y: P.y + V.y * 2000 }
-              relativePoints.push({ x: endPt.x - p1.x, y: endPt.y - p1.y })
-            }
-            break
-          }
-
-          const { pt: I, type: hitType, shape: hitShape, A, B } = closestIntersection
-          
-          if (currentDepth === 0) {
-            // 光線の起点を常に矢印の根元 (p1) にする
+            // 光線パスの点リスト（startAbs基準の相対座標）
+            const relativePoints: Array<{ x: number; y: number }> = []
             relativePoints.push({ x: 0, y: 0 })
-            
-            if (closestIntersection.t >= len - 0.1) {
-              // レンズが矢印の先端より遠い場合は、先端を経由させる
-              relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
-            }
-            relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
-          } else {
-            relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
-          }
 
-          if (hitType === 'lens') {
-            // 屈折（薄いレンズの式）
-            const lw = hitShape.props.w || 40
-            const lh = hitShape.props.h || 160
-            const lTransform = editor.getShapePageTransform(hitShape.id)
-            const C = lTransform.applyToPoint({ x: lw / 2, y: lh / 2 })
+            const maxDepth = 10
 
-            // 接線ベクトルと法線ベクトル
-            const T = { x: B.x - A.x, y: B.y - A.y }
-            const tLen = Math.sqrt(T.x * T.x + T.y * T.y)
-            const T_norm = tLen > 1e-8 ? { x: T.x / tLen, y: T.y / tLen } : { x: 1, y: 0 }
-            let U = { x: -T_norm.y, y: T_norm.x } // 法線
+            while (depth < maxDepth) {
+              let closestIntersection: {
+                t: number
+                pt: { x: number; y: number }
+                type: 'lens' | 'mirror' | 'splitter'
+                shape: any
+                A: { x: number; y: number }
+                B: { x: number; y: number }
+              } | null = null
 
-            // 進行方向に合わせて法線を反転
-            if (V.x * U.x + V.y * U.y < 0) {
-              U = { x: -U.x, y: -U.y }
-            }
+              // --- レンズとの交差 ---
+              for (const lens of lenses) {
+                const lTransform = editor.getShapePageTransform(lens.id)
+                if (!lTransform) continue
+                const lw = lens.props.w || 40
+                const lh = lens.props.h || 160
+                const A = lTransform.applyToPoint({ x: lw / 2, y: 0 })
+                const B = lTransform.applyToPoint({ x: lw / 2, y: lh })
 
-            // 焦点距離の取得
-            const f = hitShape.props.focalLength || 150
-            // 波長による焦点距離の補正（色収差）
-            const f_eff = f * f_dispersion_ratio
+                const segDx = B.x - A.x
+                const segDy = B.y - A.y
+                const det = V.y * segDx - V.x * segDy
 
-            // レンズ中心からの交点の高さ（接線方向の距離）
-            const hInt = (I.x - C.x) * T_norm.x + (I.y - C.y) * T_norm.y
+                if (Math.abs(det) > 1e-6) {
+                  const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
+                  const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
+                  if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
+                    if (!closestIntersection || t < closestIntersection.t) {
+                      closestIntersection = { t, pt: { x: P.x + t * V.x, y: P.y + t * V.y }, type: 'lens', shape: lens, A, B }
+                    }
+                  }
+                }
+              }
 
-            // 薄いレンズの偏角公式による傾きの変更
-            const sIn = (V.x * T_norm.x + V.y * T_norm.y) / (V.x * U.x + V.y * U.y)
-            const sOut = sIn - hInt / f_eff
+              // --- 鏡との交差 ---
+              for (const mirror of mirrors) {
+                const mTransform = editor.getShapePageTransform(mirror.id)
+                if (!mTransform) continue
+                const mw = mirror.props.w || 20
+                const mh = mirror.props.h || 160
+                let localA = { x: 0, y: 0 }
+                let localB = { x: 0, y: mh }
+                
+                if (mirror.props.mirrorType !== 'flat') {
+                  localA = { x: mw, y: 0 }
+                  localB = { x: mw, y: mh }
+                }
+                const A = mTransform.applyToPoint(localA)
+                const B = mTransform.applyToPoint(localB)
 
-            const VPrime_unnorm = {
-              x: U.x + sOut * T_norm.x,
-              y: U.y + sOut * T_norm.y
-            }
-            const vpLen = Math.sqrt(VPrime_unnorm.x * VPrime_unnorm.x + VPrime_unnorm.y * VPrime_unnorm.y)
-            const VPrime = vpLen > 1e-8 ? { x: VPrime_unnorm.x / vpLen, y: VPrime_unnorm.y / vpLen } : V
+                const segDx = B.x - A.x
+                const segDy = B.y - A.y
+                const det = V.y * segDx - V.x * segDy
+                if (Math.abs(det) > 1e-6) {
+                  const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
+                  const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
+                  if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
+                    if (!closestIntersection || t < closestIntersection.t) {
+                      closestIntersection = { t, pt: { x: P.x + t * V.x, y: P.y + t * V.y }, type: 'mirror', shape: mirror, A, B }
+                    }
+                  }
+                }
+              }
 
-            // 次の追跡ステップへ
-            P = { x: I.x + VPrime.x * 1e-2, y: I.y + VPrime.y * 1e-2 }
-            V = VPrime
-          } 
-          
-          else if (hitType === 'mirror') {
-            // 反射処理
-            const T = { x: B.x - A.x, y: B.y - A.y }
-            const tLen = Math.sqrt(T.x * T.x + T.y * T.y)
-            const T_norm = tLen > 1e-8 ? { x: T.x / tLen, y: T.y / tLen } : { x: 1, y: 0 }
-            let N = { x: -T_norm.y, y: T_norm.x } // 平面鏡の基準法線
+              // --- スプリッターとの交差 ---
+              for (const splitter of splitters) {
+                const sTransform = editor.getShapePageTransform(splitter.id)
+                if (!sTransform) continue
+                const sw = splitter.props.w || 20
+                const sh = splitter.props.h || 160
+                
+                // スプリッターの中心面を交差判定に使用
+                const A = sTransform.applyToPoint({ x: sw / 2, y: 0 })
+                const B = sTransform.applyToPoint({ x: sw / 2, y: sh })
 
-            if (hitShape.props.mirrorType === 'curved') {
-              const mh = hitShape.props.h || 160
-              const mTransform = editor.getShapePageTransform(hitShape.id)
-              // 曲面鏡の頂点は x=0, y=mh/2
-              const C = mTransform.applyToPoint({ x: 0, y: mh / 2 })
-              const f = hitShape.props.focalLength || 150
+                const segDx = B.x - A.x
+                const segDy = B.y - A.y
+                const det = V.y * segDx - V.x * segDy
+                if (Math.abs(det) > 1e-6) {
+                  const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
+                  const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
+                  if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
+                    if (!closestIntersection || t < closestIntersection.t) {
+                      closestIntersection = { t, pt: { x: P.x + t * V.x, y: P.y + t * V.y }, type: 'splitter', shape: splitter, A, B }
+                    }
+                  }
+                }
+              }
+
+              if (!closestIntersection) {
+                // 交点がない場合は画面外へ光線を伸ばして終了
+                if (depth === 0 && isFirstBranch && rayCount === 1 && laser.type === 'arrow') {
+                  // 古い矢印の単一レーザーの場合は延長しない（矢印自体が描画されるため）
+                  relativePoints.length = 0
+                } else {
+                  const drawLen = 2000
+                  const endPt = { x: P.x + V.x * drawLen, y: P.y + V.y * drawLen }
+                  relativePoints.push({ x: endPt.x - startAbs.x, y: endPt.y - startAbs.y })
+                }
+                break
+              }
+
+              const { pt: I, type: hitType, shape: hitShape, A, B } = closestIntersection
+
+              // 交点を現在のブランチに追加
+              if (depth === 0 && isFirstBranch && laser.type === 'arrow' && closestIntersection.t >= initialLen - 0.1) {
+                // レンズが矢印の先端より遠い場合は、先端を経由させる (古い矢印用)
+                relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
+              }
+              relativePoints.push({ x: I.x - startAbs.x, y: I.y - startAbs.y })
+
+              if (hitType === 'lens') {
+                const lw = hitShape.props.w || 40
+                const lh = hitShape.props.h || 160
+                const lTransform = editor.getShapePageTransform(hitShape.id)
+                const C = lTransform.applyToPoint({ x: lw / 2, y: lh / 2 })
+
+                const T = { x: B.x - A.x, y: B.y - A.y }
+                const tLen = Math.sqrt(T.x * T.x + T.y * T.y)
+                const T_norm = tLen > 1e-8 ? { x: T.x / tLen, y: T.y / tLen } : { x: 1, y: 0 }
+                let U = { x: -T_norm.y, y: T_norm.x } 
+
+                if (V.x * U.x + V.y * U.y < 0) {
+                  U = { x: -U.x, y: -U.y }
+                }
+
+                const f = hitShape.props.focalLength || 150
+                const f_eff = f * f_dispersion_ratio
+                const hInt = (I.x - C.x) * T_norm.x + (I.y - C.y) * T_norm.y
+
+                const sIn = (V.x * T_norm.x + V.y * T_norm.y) / (V.x * U.x + V.y * U.y)
+                const sOut = sIn - hInt / f_eff
+
+                const VPrime_unnorm = { x: U.x + sOut * T_norm.x, y: U.y + sOut * T_norm.y }
+                const vpLen = Math.sqrt(VPrime_unnorm.x * VPrime_unnorm.x + VPrime_unnorm.y * VPrime_unnorm.y)
+                const VPrime = vpLen > 1e-8 ? { x: VPrime_unnorm.x / vpLen, y: VPrime_unnorm.y / vpLen } : V
+
+                P = { x: I.x + VPrime.x * 1e-2, y: I.y + VPrime.y * 1e-2 }
+                V = VPrime
+              } 
+              else if (hitType === 'mirror' || hitType === 'splitter') {
+                const T = { x: B.x - A.x, y: B.y - A.y }
+                const tLen = Math.sqrt(T.x * T.x + T.y * T.y)
+                const T_norm = tLen > 1e-8 ? { x: T.x / tLen, y: T.y / tLen } : { x: 1, y: 0 }
+                let N = { x: -T_norm.y, y: T_norm.x } 
+
+                if (hitType === 'mirror' && hitShape.props.mirrorType === 'curved') {
+                  const mh = hitShape.props.h || 160
+                  const mTransform = editor.getShapePageTransform(hitShape.id)
+                  const C = mTransform.applyToPoint({ x: 0, y: mh / 2 })
+                  const f = hitShape.props.focalLength || 150
+                  
+                  const hInt = (I.x - C.x) * T_norm.x + (I.y - C.y) * T_norm.y
+                  N = {
+                    x: N.x - (hInt / (2 * f)) * T_norm.x,
+                    y: N.y - (hInt / (2 * f)) * T_norm.y
+                  }
+                  const nLen = Math.sqrt(N.x * N.x + N.y * N.y)
+                  if (nLen > 1e-8) {
+                    N = { x: N.x / nLen, y: N.y / nLen }
+                  }
+                }
+
+                if (V.x * N.x + V.y * N.y > 0) {
+                  N = { x: -N.x, y: -N.y }
+                }
+
+                const dotVal = V.x * N.x + V.y * N.y
+                const VReflect = {
+                  x: V.x - 2 * dotVal * N.x,
+                  y: V.y - 2 * dotVal * N.y
+                }
+
+                if (hitType === 'splitter') {
+                  // スプリッター：反射光を新しいブランチとしてキューに追加し、透過光は直進させる
+                  const PReflect = { x: I.x + VReflect.x * 1e-2, y: I.y + VReflect.y * 1e-2 }
+                  queue.push({
+                    P: PReflect,
+                    V: VReflect,
+                    branchId: `${branchId}-${depth}R`,
+                    depth: depth + 1,
+                    startAbs: PReflect,
+                    isFirstBranch: false
+                  })
+
+                  // 現在のブランチは透過光として直進
+                  P = { x: I.x + V.x * 1e-2, y: I.y + V.y * 1e-2 }
+                  // Vは変化なし
+                } else {
+                  // ミラー：全反射
+                  P = { x: I.x + VReflect.x * 1e-2, y: I.y + VReflect.y * 1e-2 }
+                  V = VReflect
+                }
+              }
+
+              depth++
+            } // end while (depth < maxDepth)
+
+            if (relativePoints.length > 1) {
+              const rayId = `shape:ray-${laserBaseId}-${branchId}` as any
+              const points: any = {}
+              let currentIndex = 'a1' as IndexKey
+              relativePoints.forEach((pt, index) => {
+                const key = `pt${index}`
+                points[key] = { id: key, index: currentIndex, x: pt.x, y: pt.y }
+                currentIndex = getIndexAbove(currentIndex)
+              })
               
-              // 凹面鏡・凸面鏡の反射方向傾斜補正 (R = 2f)
-              const hInt = (I.x - C.x) * T_norm.x + (I.y - C.y) * T_norm.y
-              N = {
-                x: N.x - (hInt / (2 * f)) * T_norm.x,
-                y: N.y - (hInt / (2 * f)) * T_norm.y
-              }
-              const nLen = Math.sqrt(N.x * N.x + N.y * N.y)
-              if (nLen > 1e-8) {
-                N = { x: N.x / nLen, y: N.y / nLen }
-              }
+              editor.createShape({
+                id: rayId,
+                type: 'line',
+                x: startAbs.x,
+                y: startAbs.y,
+                props: {
+                  color: rayColor,
+                  dash: 'solid',
+                  size: laser.props.size || 'm',
+                  spline: 'line',
+                  points
+                },
+                isLocked: true
+              })
             }
-
-            // 進行方向に正対させる
-            if (V.x * N.x + V.y * N.y > 0) {
-              N = { x: -N.x, y: -N.y }
-            }
-
-            const dotVal = V.x * N.x + V.y * N.y
-            const VPrime = {
-              x: V.x - 2 * dotVal * N.x,
-              y: V.y - 2 * dotVal * N.y
-            }
-
-            // 次の追跡ステップへ
-            P = { x: I.x + VPrime.x * 1e-2, y: I.y + VPrime.y * 1e-2 }
-            V = VPrime
-          }
-
-          currentDepth++
-        }
-
-        const rayId = `shape:ray-${laserBaseId}-${rayIdx}` as any
-
-        if (relativePoints.length <= 1) {
-          continue
-        }
-
-        // tldrawのポイントリスト形式へ整形
-        const points: any = {}
-        let currentIndex = 'a1' as IndexKey
-        relativePoints.forEach((pt, index) => {
-          const key = `pt${index}`
-          points[key] = { id: key, index: currentIndex, x: pt.x, y: pt.y }
-          currentIndex = getIndexAbove(currentIndex)
-        })
-        
-        editor.createShape({
-          id: rayId,
-          type: 'line',
-          x: p1.x,
-          y: p1.y,
-          props: {
-            color: rayColor,
-            dash: 'solid',
-            size: laser.props.size || 'm',
-            spline: 'line', // 角を丸めない（完全な直線）
-            points
-          },
-          isLocked: true
-        })
-      } // end rayIdx loop
+          } // end while (queue.length > 0)
+        } // end rayIdx loop
     } // end laser loop
     }
 
