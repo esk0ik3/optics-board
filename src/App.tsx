@@ -7,6 +7,8 @@ import {
   ShapeUtil,
   SVGContainer,
   Rectangle2d,
+  Polygon2d,
+  Vec,
   TLBaseShape,
 } from 'tldraw'
 import 'tldraw/tldraw.css'
