@@ -389,8 +389,11 @@ export default function App() {
         const transform = editor.getShapePageTransform(laser.id)
         if (!transform) continue
 
-        const start = laser.props.start || { x: 0, y: 0 }
-        const end = laser.props.end || { x: 100, y: 0 }
+        const startProp = laser.props.start || { x: 0, y: 0 }
+        const endProp = laser.props.end || { x: 100, y: 0 }
+        // 矢印が図形にスナップ（バインド）されている場合、x, yがundefinedになるため0にフォールバックしてNaNを防ぐ
+        const start = { x: startProp.x ?? 0, y: startProp.y ?? 0 }
+        const end = { x: endProp.x ?? 100, y: endProp.y ?? 0 }
         const p1 = transform.applyToPoint(start)
         const p2 = transform.applyToPoint(end)
 
@@ -649,6 +652,8 @@ export default function App() {
         isUpdating = true
         try {
           updateRays()
+        } catch (err) {
+          console.error("Raytracing error:", err)
         } finally {
           isUpdating = false
         }
