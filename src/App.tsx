@@ -1525,7 +1525,7 @@ export default function App() {
                 
                 let my_n_wl = n_wl
                 if (hitType === 'water-drop') {
-                  my_n_wl = 1.333 + (532 - wl) * 0.00004
+                  my_n_wl = 1.333 + (532 - wl) * 0.0002
                 }
 
                 let n1 = isEntering ? 1.0 : my_n_wl
