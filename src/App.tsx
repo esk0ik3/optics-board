@@ -1062,10 +1062,11 @@ export default function App() {
     const unsubscribe = editor.store.listen((event: any) => {
       if (isUpdating) return
 
+      // 全ての図形の変更を検知して更新する（パフォーマンス上の問題はないため確実性を優先）
       const hasOpticsChanges =
-        Object.values(event.changes.added).some((s: any) => s.type === 'geo' || s.type === 'arrow' || s.type === 'optics-lens' || s.type === 'optics-mirror') ||
-        Object.values(event.changes.removed).some((s: any) => s.type === 'geo' || s.type === 'arrow' || s.type === 'optics-lens' || s.type === 'optics-mirror') ||
-        Object.values(event.changes.updated).some(([, newShape]: any) => newShape.type === 'geo' || newShape.type === 'arrow' || newShape.type === 'optics-lens' || newShape.type === 'optics-mirror')
+        Object.values(event.changes.added).some((s: any) => s.typeName === 'shape') ||
+        Object.values(event.changes.removed).some((s: any) => s.typeName === 'shape') ||
+        Object.values(event.changes.updated).some(([, newShape]: any) => newShape.typeName === 'shape')
 
       if (hasOpticsChanges) {
         isUpdating = true
