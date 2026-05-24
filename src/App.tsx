@@ -1255,7 +1255,8 @@ export default function App() {
 
           while (queue.length > 0) {
             const currentRay = queue.shift()!
-            let { P, V, branchId, depth, startAbs, isFirstBranch } = currentRay
+            let { P, V, branchId, depth, startAbs, isFirstBranch, waterBounces } = currentRay as any
+            waterBounces = waterBounces || 0
             
             // 光線パスの点リスト（startAbs基準の相対座標）
             const relativePoints: Array<{ x: number; y: number }> = []
@@ -1538,8 +1539,6 @@ export default function App() {
 
                 if (hitType === 'water-drop' && !isEntering) {
                   // 部分反射をシミュレート
-                  const queueItem = queue[0] || {}
-                  const waterBounces = (queueItem as any).waterBounces || 0
                   if (waterBounces < 2) { // 主虹・副虹のために最大2回反射
                     const dotVal = V.x * N_calc.x + V.y * N_calc.y
                     const reflectV = { x: V.x - 2 * dotVal * N_calc.x, y: V.y - 2 * dotVal * N_calc.y }
@@ -1547,7 +1546,7 @@ export default function App() {
                     queue.push({
                       P: reflectP,
                       V: reflectV,
-                      branchId: (queueItem as any).branchId + 'R',
+                      branchId: branchId + 'R',
                       depth: depth + 1,
                       startAbs: reflectP,
                       isFirstBranch: false,
