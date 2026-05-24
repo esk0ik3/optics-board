@@ -661,7 +661,7 @@ export default function App() {
         let V = { x: V_dir.x / len, y: V_dir.y / len } // 単位方向ベクトル
 
         // 光線パスの点リスト（p1基準の相対座標）
-        const relativePoints: Array<{ x: number; y: number }> = [{ x: 0, y: 0 }]
+        const relativePoints: Array<{ x: number; y: number }> = []
         
         let currentDepth = 0
         const maxDepth = 10 // 少し余裕を持たせる
@@ -775,7 +775,28 @@ export default function App() {
           }
 
           const { pt: I, type: hitType, shape: hitShape, A, B } = closestIntersection
-          relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
+          
+          if (currentDepth === 0) {
+            if (closestIntersection.t < len - 0.1) {
+              const scale = closestIntersection.t / len
+              const snappedEnd = {
+                x: start.x + (end.x - start.x) * scale,
+                y: start.y + (end.y - start.y) * scale
+              }
+              editor.updateShape({
+                id: laser.id,
+                type: laser.type,
+                props: { ...laser.props, end: snappedEnd }
+              } as any)
+              
+              relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
+            } else {
+              relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
+              relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
+            }
+          } else {
+            relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
+          }
 
           if (hitType === 'lens') {
             // 屈折（薄いレンズの式）
