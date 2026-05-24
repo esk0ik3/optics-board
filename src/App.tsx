@@ -1071,9 +1071,9 @@ export default function App() {
       if (isUpdating) return
 
       const hasOpticsChanges =
-        Object.values(event.changes.added).some((s: any) => s.type === 'arrow' || s.type === 'optics-lens' || s.type === 'optics-mirror') ||
-        Object.values(event.changes.removed).some((s: any) => s.type === 'arrow' || s.type === 'optics-lens' || s.type === 'optics-mirror') ||
-        Object.values(event.changes.updated).some(([, newShape]: any) => newShape.type === 'arrow' || newShape.type === 'optics-lens' || newShape.type === 'optics-mirror')
+        Object.values(event.changes.added).some((s: any) => s.type === 'geo' || s.type === 'arrow' || s.type === 'optics-lens' || s.type === 'optics-mirror') ||
+        Object.values(event.changes.removed).some((s: any) => s.type === 'geo' || s.type === 'arrow' || s.type === 'optics-lens' || s.type === 'optics-mirror') ||
+        Object.values(event.changes.updated).some(([, newShape]: any) => newShape.type === 'geo' || newShape.type === 'arrow' || newShape.type === 'optics-lens' || newShape.type === 'optics-mirror')
 
       if (hasOpticsChanges) {
         isUpdating = true
