@@ -706,11 +706,11 @@ export default function App() {
 
       // レーザーが存在しない古い光線を削除する
       const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
-      const laserBaseIds = new Set(Array.from(laserIds).map((id: string) => id.replace('shape:', '')))
+      const laserBaseIds = new Set(Array.from(laserIds).map((id: any) => id.replace('shape:', '')))
       const raysToDelete = existingRays
         .filter((r: any) => {
           // r.id format: shape:ray-xxxxx-idx
-          const hasParent = Array.from(laserBaseIds).some((baseId: string) => r.id.startsWith(`shape:ray-${baseId}`))
+          const hasParent = Array.from(laserBaseIds).some((baseId: any) => r.id.startsWith(`shape:ray-${baseId}`))
           return !hasParent
         })
         .map((r: any) => r.id)
@@ -895,18 +895,7 @@ export default function App() {
           
           if (currentDepth === 0) {
             if (closestIntersection.t < len - 0.1) {
-              if (rayCount === 1 || rayIdx === Math.floor(rayCount / 2)) {
-                const scale = closestIntersection.t / len
-                const snappedEnd = {
-                  x: start.x + (end.x - start.x) * scale,
-                  y: start.y + (end.y - start.y) * scale
-                }
-                editor.updateShape({
-                  id: laser.id,
-                  type: laser.type,
-                  props: { ...laser.props, end: snappedEnd }
-                } as any)
-              }
+              // 先端の自動スナップ機能は削除
               relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
             } else {
               relativePoints.push({ x: p2.x - p1.x, y: p2.y - p1.y })
