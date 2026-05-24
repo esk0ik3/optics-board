@@ -220,7 +220,58 @@ export class OpticsSplitterUtil extends ShapeUtil<OpticsSplitterShape> {
   }
 }
 
-const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil, OpticsSplitterUtil]
+// --- Optics Cube Splitter Shape ---
+export type OpticsCubeSplitterShape = TLBaseShape<'optics-cube-splitter', {
+  w: number
+  h: number
+}>
+
+export class OpticsCubeSplitterUtil extends ShapeUtil<OpticsCubeSplitterShape> {
+  static override type = 'optics-cube-splitter' as const
+  override isAspectRatioLocked = () => false
+  override canEdit = () => false
+  override canResize = () => false
+
+  override getDefaultProps(): OpticsCubeSplitterShape['props'] {
+    return {
+      w: 80,
+      h: 80,
+    }
+  }
+
+  override getGeometry(shape: OpticsCubeSplitterShape) {
+    return new Rectangle2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true,
+    })
+  }
+
+  override component(shape: OpticsCubeSplitterShape) {
+    const { w, h } = shape.props
+
+    return (
+      <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          {/* キューブの外枠と背景 */}
+          <rect width={w} height={h} fill="rgba(6, 182, 212, 0.1)" stroke="#06b6d4" strokeWidth={2} />
+          
+          {/* 対角線（スプリッター面: 左下から右上） */}
+          <line x1={0} y1={h} x2={w} y2={0} stroke="#0891b2" strokeWidth={2} strokeDasharray="4,4" />
+          
+          {/* プリズム感のある補助線 */}
+          <polygon points={`0,0 ${w},0 0,${h}`} fill="rgba(255, 255, 255, 0.2)" />
+        </svg>
+      </SVGContainer>
+    )
+  }
+
+  override indicator(shape: OpticsCubeSplitterShape) {
+    return <rect width={shape.props.w} height={shape.props.h} fill="none" stroke="#0891b2" strokeWidth={1.5} />
+  }
+}
+
+const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil, OpticsSplitterUtil, OpticsCubeSplitterUtil]
 
 function CustomUI({ editor }: { editor: any }) {
   const selectedShapes = useValue('selected shapes', () => editor.getSelectedShapes(), [editor])
@@ -427,6 +478,19 @@ function CustomUI({ editor }: { editor: any }) {
     })
   }
 
+  const addCubeSplitter = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-cube-splitter',
+      x: center.x - 40,
+      y: center.y - 40,
+      props: {
+        w: 80,
+        h: 80,
+      },
+    })
+  }
+
   const addFlatMirror = () => {
     const center = editor.getViewportPageBounds().center
     editor.createShape({
@@ -547,7 +611,8 @@ function CustomUI({ editor }: { editor: any }) {
             
             <div style={{ display: 'flex', gap: '8px', flexDirection: isHorizontal ? 'row' : 'column' }}>
               <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: isHorizontal ? 'center' : 'flex-start', color: '#475569', marginRight: isHorizontal ? '4px' : '0', marginBottom: isHorizontal ? '0' : '4px' }}>鏡:</span>
-              <button style={{ ...btnStyle, backgroundColor: '#0891b2', width: isHorizontal ? 'auto' : '100%' }} onClick={addBeamSplitter}>スプリッター</button>
+              <button style={{ ...btnStyle, backgroundColor: '#0891b2', width: isHorizontal ? 'auto' : '100%' }} onClick={addBeamSplitter}>板スプリッター</button>
+              <button style={{ ...btnStyle, backgroundColor: '#0e7490', width: isHorizontal ? 'auto' : '100%' }} onClick={addCubeSplitter}>キューブ</button>
               <button style={{ ...btnStyle, backgroundColor: '#64748b', width: isHorizontal ? 'auto' : '100%' }} onClick={addFlatMirror}>平面</button>
               <button style={{ ...btnStyle, backgroundColor: '#475569', width: isHorizontal ? 'auto' : '100%' }} onClick={addConcaveMirror}>凹面</button>
               <button style={{ ...btnStyle, backgroundColor: '#334155', width: isHorizontal ? 'auto' : '100%' }} onClick={addConvexMirror}>凸面</button>
@@ -757,6 +822,7 @@ export default function App() {
       const lenses = shapes.filter((s: any) => s.type === 'optics-lens')
       const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
       const splitters = shapes.filter((s: any) => s.type === 'optics-splitter')
+      const cubeSplitters = shapes.filter((s: any) => s.type === 'optics-cube-splitter')
 
       // まずキャンバス上の全ての既存光線を一掃する（ロックされていると削除できないためロックを解除してから削除）
       const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
@@ -923,7 +989,7 @@ export default function App() {
                 }
               }
 
-              // --- スプリッターとの交差 ---
+              // --- スプリッター（板）との交差 ---
               for (const splitter of splitters) {
                 const sTransform = editor.getShapePageTransform(splitter.id)
                 if (!sTransform) continue
@@ -943,6 +1009,31 @@ export default function App() {
                   if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
                     if (!closestIntersection || t < closestIntersection.t) {
                       closestIntersection = { t, pt: { x: P.x + t * V.x, y: P.y + t * V.y }, type: 'splitter', shape: splitter, A, B }
+                    }
+                  }
+                }
+              }
+
+              // --- キューブスプリッターとの交差 ---
+              for (const cubeSplitter of cubeSplitters) {
+                const cTransform = editor.getShapePageTransform(cubeSplitter.id)
+                if (!cTransform) continue
+                const cw = cubeSplitter.props.w || 80
+                const ch = cubeSplitter.props.h || 80
+                
+                // 対角面（左下から右上: (0, h) to (w, 0)）を交差判定に使用
+                const A = cTransform.applyToPoint({ x: 0, y: ch })
+                const B = cTransform.applyToPoint({ x: cw, y: 0 })
+
+                const segDx = B.x - A.x
+                const segDy = B.y - A.y
+                const det = V.y * segDx - V.x * segDy
+                if (Math.abs(det) > 1e-6) {
+                  const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
+                  const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
+                  if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
+                    if (!closestIntersection || t < closestIntersection.t) {
+                      closestIntersection = { t, pt: { x: P.x + t * V.x, y: P.y + t * V.y }, type: 'splitter', shape: cubeSplitter, A, B }
                     }
                   }
                 }
