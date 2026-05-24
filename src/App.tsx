@@ -192,6 +192,24 @@ function CustomUI({ editor }: { editor: any }) {
     currentAngle = Math.round(currentAngle * 10) / 10
   }
 
+  const handleWavelengthChange = (wl: number) => {
+    if (!selectedShape) return
+    let rayColor = 'green'
+    if (wl < 450) rayColor = 'violet'
+    else if (wl < 500) rayColor = 'blue'
+    else if (wl < 550) rayColor = 'green'
+    else if (wl < 600) rayColor = 'yellow'
+    else if (wl < 650) rayColor = 'orange'
+    else rayColor = 'red'
+
+    editor.updateShape({
+      id: selectedShape.id,
+      type: selectedShape.type,
+      props: { ...selectedShape.props, color: rayColor },
+      meta: { ...selectedShape.meta, wavelength: wl }
+    } as any)
+  }
+
   const [isOpen, setIsOpen] = useState(false)
   const [isHorizontal, setIsHorizontal] = useState(true)
   const [pos, setPos] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight / 2 - 30 : 300 })
@@ -520,13 +538,7 @@ function CustomUI({ editor }: { editor: any }) {
               <input
                 type="number"
                 value={selectedShape.meta.wavelength ?? 532}
-                onChange={(e) => {
-                  editor.updateShape({
-                    id: selectedShape.id,
-                    type: selectedShape.type,
-                    meta: { ...selectedShape.meta, wavelength: Number(e.target.value) }
-                  } as any)
-                }}
+                onChange={(e) => handleWavelengthChange(Number(e.target.value))}
                 style={{ width: '60px' }}
               />
               <input
@@ -535,13 +547,7 @@ function CustomUI({ editor }: { editor: any }) {
                 max={700}
                 step={1}
                 value={selectedShape.meta.wavelength ?? 532}
-                onChange={(e) => {
-                  editor.updateShape({
-                    id: selectedShape.id,
-                    type: selectedShape.type,
-                    meta: { ...selectedShape.meta, wavelength: Number(e.target.value) }
-                  } as any)
-                }}
+                onChange={(e) => handleWavelengthChange(Number(e.target.value))}
                 style={{ width: '100px', cursor: 'pointer' }}
               />
             </div>
