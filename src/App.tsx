@@ -185,6 +185,10 @@ function CustomUI({ editor }: { editor: any }) {
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
+  const [sliderPos, setSliderPos] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 - 180 : 200, y: 20 })
+  const [isSliderDragging, setIsSliderDragging] = useState(false)
+  const [sliderDragOffset, setSliderDragOffset] = useState({ x: 0, y: 0 })
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).tagName === 'BUTTON') return
     (e.target as HTMLElement).setPointerCapture(e.pointerId)
@@ -206,6 +210,30 @@ function CustomUI({ editor }: { editor: any }) {
   const handlePointerUp = (e: React.PointerEvent) => {
     if (!isDragging) return
     setIsDragging(false)
+    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+  }
+
+  const handleSliderPointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).tagName === 'INPUT') return
+    (e.target as HTMLElement).setPointerCapture(e.pointerId)
+    setIsSliderDragging(true)
+    setSliderDragOffset({
+      x: e.clientX - sliderPos.x,
+      y: e.clientY - sliderPos.y
+    })
+  }
+
+  const handleSliderPointerMove = (e: React.PointerEvent) => {
+    if (!isSliderDragging) return
+    setSliderPos({
+      x: e.clientX - sliderDragOffset.x,
+      y: e.clientY - sliderDragOffset.y
+    })
+  }
+
+  const handleSliderPointerUp = (e: React.PointerEvent) => {
+    if (!isSliderDragging) return
+    setIsSliderDragging(false)
     ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
   }
 
@@ -384,7 +412,28 @@ function CustomUI({ editor }: { editor: any }) {
       </div>
 
       {selectedOptics.length === 1 && (
-        <div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'rgba(255,255,255,0.95)', padding: '12px 24px', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div 
+          style={{ 
+            position: 'absolute', 
+            top: sliderPos.y, 
+            left: sliderPos.x, 
+            zIndex: 1000, 
+            background: 'rgba(255,255,255,0.95)', 
+            padding: '12px 24px', 
+            borderRadius: 12, 
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '16px',
+            cursor: isSliderDragging ? 'grabbing' : 'grab',
+            touchAction: 'none',
+            userSelect: 'none'
+          }}
+          onPointerDown={handleSliderPointerDown}
+          onPointerMove={handleSliderPointerMove}
+          onPointerUp={handleSliderPointerUp}
+          onPointerCancel={handleSliderPointerUp}
+        >
           <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '120px' }}>
             焦点距離: {(selectedOptics[0] as any).props.focalLength}
           </label>
