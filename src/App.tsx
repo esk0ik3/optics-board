@@ -194,18 +194,10 @@ function CustomUI({ editor }: { editor: any }) {
 
   const handleWavelengthChange = (wl: number) => {
     if (!selectedShape) return
-    let rayColor = 'green'
-    if (wl < 450) rayColor = 'violet'
-    else if (wl < 500) rayColor = 'blue'
-    else if (wl < 550) rayColor = 'green'
-    else if (wl < 600) rayColor = 'yellow'
-    else if (wl < 650) rayColor = 'orange'
-    else rayColor = 'red'
 
     editor.updateShape({
       id: selectedShape.id,
       type: selectedShape.type,
-      props: { ...selectedShape.props, color: rayColor },
       meta: { ...selectedShape.meta, wavelength: wl }
     } as any)
   }
