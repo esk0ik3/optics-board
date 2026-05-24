@@ -755,14 +755,14 @@ function CustomUI({ editor }: { editor: any }) {
 
   // ボタンのデザイン設定
   const btnStyle = {
-    padding: '8px 12px',
-    fontSize: '12px',
+    padding: '4px 8px',
+    fontSize: '10px',
     fontWeight: 'bold',
     cursor: 'pointer',
     color: 'white',
     border: 'none', 
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+    borderRadius: '4px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
     width: 'auto'
   }
 
@@ -796,7 +796,7 @@ function CustomUI({ editor }: { editor: any }) {
           flexDirection: isOpen && !isHorizontal ? 'column' : 'row',
           gap: isOpen && !isHorizontal ? '8px' : '0'
         }}>
-          <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#333' }}>
             {isOpen && !isHorizontal ? '🛠 メニュー' : '🛠 光学素子メニュー'}
           </div>
           <div style={{ 
@@ -807,14 +807,14 @@ function CustomUI({ editor }: { editor: any }) {
           }}>
             {isOpen && (
               <button 
-                style={{ cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}
+                style={{ cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}
                 onClick={(e) => { e.stopPropagation(); setIsHorizontal(!isHorizontal) }}
               >
                 {isHorizontal ? '⬇ 縦' : '➡ 横'}
               </button>
             )}
             <button 
-              style={{ cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}
+              style={{ cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}
               onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
             >
               {isOpen ? '閉じる' : '開く'}
@@ -825,13 +825,13 @@ function CustomUI({ editor }: { editor: any }) {
         {isOpen && (
           <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexDirection: isHorizontal ? 'row' : 'column', flexWrap: isHorizontal ? 'wrap' : 'nowrap' }}>
             <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>光源:</span>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>光源:</span>
               <button style={{ ...btnStyle, backgroundColor: '#10b981' }} onClick={addLaser}>レーザー</button>
               <button style={{ ...btnStyle, backgroundColor: '#059669' }} onClick={addParallelLaser}>平行光源</button>
             </div>
             {isHorizontal && <div style={{ width: '1px', background: '#cbd5e1', alignSelf: 'stretch' }} />}
             <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>レンズ:</span>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>レンズ:</span>
               <button style={{ ...btnStyle, backgroundColor: '#2563eb' }} onClick={addDoubleConvex}>両凸</button>
               <button style={{ ...btnStyle, backgroundColor: '#1d4ed8' }} onClick={addDoubleConcave}>両凹</button>
               <button style={{ ...btnStyle, backgroundColor: '#3b82f6' }} onClick={addPlanoConvex}>平凸</button>
@@ -841,7 +841,7 @@ function CustomUI({ editor }: { editor: any }) {
             <div style={{ width: isHorizontal ? '1px' : '100%', height: isHorizontal ? '24px' : '1px', background: '#cbd5e1' }}></div>
             
             <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>鏡:</span>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>鏡:</span>
               <button style={{ ...btnStyle, backgroundColor: '#0891b2' }} onClick={addBeamSplitter}>板スプリッター</button>
               <button style={{ ...btnStyle, backgroundColor: '#0e7490' }} onClick={addCubeSplitter}>キューブ</button>
               <button style={{ ...btnStyle, backgroundColor: '#64748b' }} onClick={addFlatMirror}>平面</button>
@@ -852,7 +852,7 @@ function CustomUI({ editor }: { editor: any }) {
             <div style={{ width: isHorizontal ? '1px' : '100%', height: isHorizontal ? '24px' : '1px', background: '#cbd5e1' }}></div>
 
             <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>その他:</span>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>その他:</span>
               <button style={{ ...btnStyle, backgroundColor: '#1e293b' }} onClick={addScreen}>スクリーン</button>
               <button style={{ ...btnStyle, backgroundColor: '#8b5cf6' }} onClick={addPrism}>プリズム</button>
               <button style={{ ...btnStyle, backgroundColor: '#6366f1' }} onClick={addGlassBlock}>ガラスブロック</button>
