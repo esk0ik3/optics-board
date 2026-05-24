@@ -181,6 +181,7 @@ function CustomUI({ editor }: { editor: any }) {
   const selectedOptics = selectedShapes.filter((s: any) => s.type === 'optics-lens' || (s.type === 'optics-mirror' && s.props.mirrorType === 'curved'))
 
   const [isOpen, setIsOpen] = useState(false)
+  const [isHorizontal, setIsHorizontal] = useState(true)
   const [pos, setPos] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight / 2 - 30 : 300 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -381,31 +382,41 @@ function CustomUI({ editor }: { editor: any }) {
           <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>
             🛠 光学素子メニュー
           </div>
-          <button 
-            style={{ marginLeft: '24px', cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}
-            onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
-          >
-            {isOpen ? '閉じる' : '開く'}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {isOpen && (
+              <button 
+                style={{ cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}
+                onClick={(e) => { e.stopPropagation(); setIsHorizontal(!isHorizontal) }}
+              >
+                {isHorizontal ? '⬇ 縦' : '➡ 横'}
+              </button>
+            )}
+            <button 
+              style={{ cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}
+              onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
+            >
+              {isOpen ? '閉じる' : '開く'}
+            </button>
+          </div>
         </div>
 
         {isOpen && (
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>レンズ:</span>
-              <button style={{ ...btnStyle, backgroundColor: '#2563eb' }} onClick={addDoubleConvex}>両凸</button>
-              <button style={{ ...btnStyle, backgroundColor: '#1d4ed8' }} onClick={addDoubleConcave}>両凹</button>
-              <button style={{ ...btnStyle, backgroundColor: '#3b82f6' }} onClick={addPlanoConvex}>平凸</button>
-              <button style={{ ...btnStyle, backgroundColor: '#60a5fa' }} onClick={addPlanoConcave}>平凹</button>
+          <div style={{ display: 'flex', gap: '16px', alignItems: isHorizontal ? 'center' : 'stretch', flexDirection: isHorizontal ? 'row' : 'column' }}>
+            <div style={{ display: 'flex', gap: '8px', flexDirection: isHorizontal ? 'row' : 'column' }}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: isHorizontal ? 'center' : 'flex-start', color: '#475569', marginRight: isHorizontal ? '4px' : '0', marginBottom: isHorizontal ? '0' : '4px' }}>レンズ:</span>
+              <button style={{ ...btnStyle, backgroundColor: '#2563eb', width: isHorizontal ? 'auto' : '100%' }} onClick={addDoubleConvex}>両凸</button>
+              <button style={{ ...btnStyle, backgroundColor: '#1d4ed8', width: isHorizontal ? 'auto' : '100%' }} onClick={addDoubleConcave}>両凹</button>
+              <button style={{ ...btnStyle, backgroundColor: '#3b82f6', width: isHorizontal ? 'auto' : '100%' }} onClick={addPlanoConvex}>平凸</button>
+              <button style={{ ...btnStyle, backgroundColor: '#60a5fa', width: isHorizontal ? 'auto' : '100%' }} onClick={addPlanoConcave}>平凹</button>
             </div>
             
-            <div style={{ width: '1px', height: '24px', background: '#cbd5e1' }}></div>
+            <div style={{ width: isHorizontal ? '1px' : '100%', height: isHorizontal ? '24px' : '1px', background: '#cbd5e1' }}></div>
             
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>鏡:</span>
-              <button style={{ ...btnStyle, backgroundColor: '#64748b' }} onClick={addFlatMirror}>平面</button>
-              <button style={{ ...btnStyle, backgroundColor: '#475569' }} onClick={addConcaveMirror}>凹面</button>
-              <button style={{ ...btnStyle, backgroundColor: '#334155' }} onClick={addConvexMirror}>凸面</button>
+            <div style={{ display: 'flex', gap: '8px', flexDirection: isHorizontal ? 'row' : 'column' }}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: isHorizontal ? 'center' : 'flex-start', color: '#475569', marginRight: isHorizontal ? '4px' : '0', marginBottom: isHorizontal ? '0' : '4px' }}>鏡:</span>
+              <button style={{ ...btnStyle, backgroundColor: '#64748b', width: isHorizontal ? 'auto' : '100%' }} onClick={addFlatMirror}>平面</button>
+              <button style={{ ...btnStyle, backgroundColor: '#475569', width: isHorizontal ? 'auto' : '100%' }} onClick={addConcaveMirror}>凹面</button>
+              <button style={{ ...btnStyle, backgroundColor: '#334155', width: isHorizontal ? 'auto' : '100%' }} onClick={addConvexMirror}>凸面</button>
             </div>
           </div>
         )}
