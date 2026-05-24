@@ -368,7 +368,7 @@ function CustomUI({ editor }: { editor: any }) {
       props: {
         geo: 'rectangle',
         w: 80,
-        h: 60,
+        h: 80,
         color: 'black',
         fill: 'solid',
       },
@@ -390,7 +390,7 @@ function CustomUI({ editor }: { editor: any }) {
       props: {
         geo: 'rectangle',
         w: 80,
-        h: 60,
+        h: 80,
         color: 'black',
         fill: 'solid',
       },
