@@ -308,7 +308,159 @@ export class OpticsCubeSplitterUtil extends ShapeUtil<OpticsCubeSplitterShape> {
   }
 }
 
-const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil, OpticsSplitterUtil, OpticsCubeSplitterUtil]
+// --- Optics Screen Shape ---
+export type OpticsScreenShape = TLBaseShape<'optics-screen', {
+  w: number
+  h: number
+}>
+
+export class OpticsScreenUtil extends ShapeUtil<OpticsScreenShape> {
+  static override type = 'optics-screen' as const
+  override isAspectRatioLocked = () => false
+  override canEdit = () => false
+  override canResize = () => false
+
+  override getDefaultProps(): OpticsScreenShape['props'] {
+    return {
+      w: 10,
+      h: 200,
+    }
+  }
+
+  override getGeometry(shape: OpticsScreenShape) {
+    return new Rectangle2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true,
+    })
+  }
+
+  override component(shape: OpticsScreenShape) {
+    const { w, h } = shape.props
+    return (
+      <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          <rect width={w} height={h} fill="#1e293b" />
+        </svg>
+      </SVGContainer>
+    )
+  }
+
+  override indicator(shape: OpticsScreenShape) {
+    return <rect width={shape.props.w} height={shape.props.h} fill="none" stroke="#1e293b" strokeWidth={1.5} />
+  }
+}
+
+// --- Optics Prism Shape ---
+export type OpticsPrismShape = TLBaseShape<'optics-prism', {
+  w: number
+  h: number
+}>
+
+export class OpticsPrismUtil extends ShapeUtil<OpticsPrismShape> {
+  static override type = 'optics-prism' as const
+  override isAspectRatioLocked = () => false
+  override canEdit = () => false
+  override canResize = () => false
+
+  override getDefaultProps(): OpticsPrismShape['props'] {
+    const w = 120
+    const h = (Math.sqrt(3) / 2) * w
+    return {
+      w,
+      h,
+    }
+  }
+
+  override getGeometry(shape: OpticsPrismShape) {
+    // 正三角形
+    return new Polygon2d({
+      points: [
+        new Vec(shape.props.w / 2, 0),
+        new Vec(shape.props.w, shape.props.h),
+        new Vec(0, shape.props.h),
+      ],
+      isFilled: true,
+    })
+  }
+
+  override component(shape: OpticsPrismShape) {
+    const { w, h } = shape.props
+    const points = `${w/2},0 ${w},${h} 0,${h}`
+    return (
+      <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          <polygon points={points} fill="rgba(255, 255, 255, 0.4)" stroke="#60a5fa" strokeWidth={2} />
+          <defs>
+            <linearGradient id={`prism-grad-${shape.id}`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+            </linearGradient>
+          </defs>
+          <polygon points={points} fill={`url(#prism-grad-${shape.id})`} />
+        </svg>
+      </SVGContainer>
+    )
+  }
+
+  override indicator(shape: OpticsPrismShape) {
+    const { w, h } = shape.props
+    const points = `${w/2},0 ${w},${h} 0,${h}`
+    return <polygon points={points} fill="none" stroke="#60a5fa" strokeWidth={1.5} />
+  }
+}
+
+// --- Optics Glass Block Shape ---
+export type OpticsGlassBlockShape = TLBaseShape<'optics-glass-block', {
+  w: number
+  h: number
+}>
+
+export class OpticsGlassBlockUtil extends ShapeUtil<OpticsGlassBlockShape> {
+  static override type = 'optics-glass-block' as const
+  override isAspectRatioLocked = () => false
+  override canEdit = () => false
+  override canResize = () => false
+
+  override getDefaultProps(): OpticsGlassBlockShape['props'] {
+    return {
+      w: 80,
+      h: 160,
+    }
+  }
+
+  override getGeometry(shape: OpticsGlassBlockShape) {
+    return new Rectangle2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true,
+    })
+  }
+
+  override component(shape: OpticsGlassBlockShape) {
+    const { w, h } = shape.props
+    return (
+      <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          <rect width={w} height={h} rx={4} ry={4} fill="rgba(255, 255, 255, 0.4)" stroke="#60a5fa" strokeWidth={2} />
+          <defs>
+            <linearGradient id={`block-grad-${shape.id}`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+            </linearGradient>
+          </defs>
+          <rect width={w} height={h} rx={4} ry={4} fill={`url(#block-grad-${shape.id})`} />
+        </svg>
+      </SVGContainer>
+    )
+  }
+
+  override indicator(shape: OpticsGlassBlockShape) {
+    return <rect width={shape.props.w} height={shape.props.h} fill="none" stroke="#60a5fa" strokeWidth={1.5} />
+  }
+}
+
+const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil, OpticsSplitterUtil, OpticsCubeSplitterUtil, OpticsScreenUtil, OpticsPrismUtil, OpticsGlassBlockUtil]
 
 function CustomUI({ editor }: { editor: any }) {
   const selectedShapes = useValue('selected shapes', () => editor.getSelectedShapes(), [editor])
@@ -572,6 +724,33 @@ function CustomUI({ editor }: { editor: any }) {
     })
   }
 
+  const addScreen = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-screen',
+      x: center.x - 5,
+      y: center.y - 100,
+    })
+  }
+
+  const addPrism = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-prism',
+      x: center.x - 60,
+      y: center.y - 50,
+    })
+  }
+
+  const addGlassBlock = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-glass-block',
+      x: center.x - 40,
+      y: center.y - 80,
+    })
+  }
+
   // ボタンのデザイン設定
   const btnStyle = {
     padding: '8px 12px',
@@ -666,6 +845,15 @@ function CustomUI({ editor }: { editor: any }) {
               <button style={{ ...btnStyle, backgroundColor: '#64748b' }} onClick={addFlatMirror}>平面</button>
               <button style={{ ...btnStyle, backgroundColor: '#475569' }} onClick={addConcaveMirror}>凹面</button>
               <button style={{ ...btnStyle, backgroundColor: '#334155' }} onClick={addConvexMirror}>凸面</button>
+            </div>
+
+            <div style={{ width: isHorizontal ? '1px' : '100%', height: isHorizontal ? '24px' : '1px', background: '#cbd5e1' }}></div>
+
+            <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>その他:</span>
+              <button style={{ ...btnStyle, backgroundColor: '#1e293b' }} onClick={addScreen}>スクリーン</button>
+              <button style={{ ...btnStyle, backgroundColor: '#8b5cf6' }} onClick={addPrism}>プリズム</button>
+              <button style={{ ...btnStyle, backgroundColor: '#6366f1' }} onClick={addGlassBlock}>ガラスブロック</button>
             </div>
           </div>
         )}
@@ -880,6 +1068,9 @@ export default function App() {
       const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
       const splitters = shapes.filter((s: any) => s.type === 'optics-splitter')
       const cubeSplitters = shapes.filter((s: any) => s.type === 'optics-cube-splitter')
+      const screens = shapes.filter((s: any) => s.type === 'optics-screen')
+      const prisms = shapes.filter((s: any) => s.type === 'optics-prism')
+      const glassBlocks = shapes.filter((s: any) => s.type === 'optics-glass-block')
 
       // まずキャンバス上の全ての既存光線を一掃する（ロックされていると削除できないためロックを解除してから削除）
       const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
@@ -986,10 +1177,11 @@ export default function App() {
               let closestIntersection: {
                 t: number
                 pt: { x: number; y: number }
-                type: 'lens' | 'mirror' | 'splitter'
+                type: 'lens' | 'mirror' | 'splitter' | 'screen' | 'prism' | 'glass-block'
                 shape: any
                 A: { x: number; y: number }
                 B: { x: number; y: number }
+                normal?: { x: number; y: number }
               } | null = null
 
               // --- レンズとの交差 ---
@@ -1096,6 +1288,83 @@ export default function App() {
                 }
               }
 
+              // --- スクリーンとの交差 ---
+              for (const screen of screens) {
+                const sTransform = editor.getShapePageTransform(screen.id)
+                if (!sTransform) continue
+                const sw = screen.props.w || 10
+                const sh = screen.props.h || 200
+                const A = sTransform.applyToPoint({ x: sw / 2, y: 0 })
+                const B = sTransform.applyToPoint({ x: sw / 2, y: sh })
+
+                const segDx = B.x - A.x
+                const segDy = B.y - A.y
+                const det = V.y * segDx - V.x * segDy
+                if (Math.abs(det) > 1e-6) {
+                  const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
+                  const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
+                  if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
+                    if (!closestIntersection || t < closestIntersection.t) {
+                      closestIntersection = { t, pt: { x: P.x + t * V.x, y: P.y + t * V.y }, type: 'screen', shape: screen, A, B }
+                    }
+                  }
+                }
+              }
+
+              // --- プリズムとガラスブロックとの交差 ---
+              const polygons = [
+                ...prisms.map((p: any) => ({
+                  shape: p, type: 'prism' as const,
+                  pts: [ {x: p.props.w/2, y: 0}, {x: p.props.w, y: p.props.h}, {x: 0, y: p.props.h} ]
+                })),
+                ...glassBlocks.map((g: any) => ({
+                  shape: g, type: 'glass-block' as const,
+                  pts: [ {x: 0, y: 0}, {x: g.props.w, y: 0}, {x: g.props.w, y: g.props.h}, {x: 0, y: g.props.h} ]
+                }))
+              ]
+
+              for (const poly of polygons) {
+                const transform = editor.getShapePageTransform(poly.shape.id)
+                if (!transform) continue
+
+                let cx = 0, cy = 0
+                for (const pt of poly.pts) {
+                  const pT = transform.applyToPoint(pt)
+                  cx += pT.x; cy += pT.y;
+                }
+                cx /= poly.pts.length; cy /= poly.pts.length;
+
+                for (let i = 0; i < poly.pts.length; i++) {
+                  const p1 = poly.pts[i]
+                  const p2 = poly.pts[(i + 1) % poly.pts.length]
+                  const A = transform.applyToPoint(p1)
+                  const B = transform.applyToPoint(p2)
+
+                  const segDx = B.x - A.x
+                  const segDy = B.y - A.y
+                  const det = V.y * segDx - V.x * segDy
+                  if (Math.abs(det) > 1e-6) {
+                    const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
+                    const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
+                    if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
+                      if (!closestIntersection || t < closestIntersection.t) {
+                        let N = { x: -segDy, y: segDx }
+                        const nLen = Math.sqrt(N.x*N.x + N.y*N.y)
+                        if (nLen > 0) { N.x /= nLen; N.y /= nLen }
+                        
+                        const pt = { x: P.x + t * V.x, y: P.y + t * V.y }
+                        const toPt = { x: pt.x - cx, y: pt.y - cy }
+                        if (toPt.x * N.x + toPt.y * N.y < 0) {
+                          N.x = -N.x; N.y = -N.y
+                        }
+
+                        closestIntersection = { t, pt, type: poly.type, shape: poly.shape, A, B, normal: N }
+                      }
+                    }
+                  }
+                }
+              }
+
               if (!closestIntersection) {
                 // 交点がない場合は画面外へ光線を伸ばして終了
                 if (depth === 0 && isFirstBranch && rayCount === 1 && laser.type === 'arrow') {
@@ -1118,7 +1387,41 @@ export default function App() {
               }
               relativePoints.push({ x: I.x - startAbs.x, y: I.y - startAbs.y })
 
-              if (hitType === 'lens') {
+              if (hitType === 'screen') {
+                // 吸収して終了
+                break
+              }
+              else if (hitType === 'prism' || hitType === 'glass-block') {
+                const N = closestIntersection.normal!
+                const c1 = V.x * N.x + V.y * N.y
+                let isEntering = c1 < 0
+                let n1 = isEntering ? 1.0 : n_wl
+                let n2 = isEntering ? n_wl : 1.0
+                
+                let N_calc = isEntering ? N : { x: -N.x, y: -N.y }
+                let cosI = isEntering ? -c1 : c1
+
+                const r = n1 / n2
+                const sinT2Sq = r * r * (1 - cosI * cosI)
+
+                if (sinT2Sq > 1.0) {
+                  // 全反射
+                  const dotVal = V.x * N_calc.x + V.y * N_calc.y
+                  V = { x: V.x - 2 * dotVal * N_calc.x, y: V.y - 2 * dotVal * N_calc.y }
+                  P = { x: I.x + V.x * 1e-2, y: I.y + V.y * 1e-2 }
+                } else {
+                  // 屈折
+                  const cosT = Math.sqrt(1.0 - sinT2Sq)
+                  V = {
+                    x: r * V.x + (r * cosI - cosT) * N_calc.x,
+                    y: r * V.y + (r * cosI - cosT) * N_calc.y
+                  }
+                  const vLen = Math.sqrt(V.x*V.x + V.y*V.y)
+                  V = { x: V.x / vLen, y: V.y / vLen }
+                  P = { x: I.x + V.x * 1e-2, y: I.y + V.y * 1e-2 }
+                }
+              }
+              else if (hitType === 'lens') {
                 const lw = hitShape.props.w || 40
                 const lh = hitShape.props.h || 160
                 const lTransform = editor.getShapePageTransform(hitShape.id)
