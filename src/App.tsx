@@ -366,7 +366,7 @@ export class OpticsPrismUtil extends ShapeUtil<OpticsPrismShape> {
   override canResize = () => false
 
   override getDefaultProps(): OpticsPrismShape['props'] {
-    const w = 120
+    const w = 200
     const h = (Math.sqrt(3) / 2) * w
     return {
       w,
@@ -590,6 +590,29 @@ function CustomUI({ editor }: { editor: any }) {
         wavelength: 532,
         rayCount: 5,
         beamWidth: 60
+      }
+    })
+  }
+
+  // 白色光源を追加するマクロ
+  const addWhiteLaser = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'geo',
+      x: center.x - 20,
+      y: center.y - 10,
+      rotation: 0,
+      props: {
+        geo: 'rectangle',
+        w: 120,
+        h: 75,
+        color: 'grey',
+        fill: 'solid',
+      },
+      meta: {
+        isOpticsLaser: true,
+        isWhiteLight: true,
+        rayCount: 1
       }
     })
   }
@@ -828,6 +851,7 @@ function CustomUI({ editor }: { editor: any }) {
               <span style={{ fontSize: '10px', fontWeight: 'bold', alignSelf: 'center', color: '#475569', marginRight: '4px' }}>光源:</span>
               <button style={{ ...btnStyle, backgroundColor: '#10b981' }} onClick={addLaser}>レーザー</button>
               <button style={{ ...btnStyle, backgroundColor: '#059669' }} onClick={addParallelLaser}>平行光源</button>
+              <button style={{ ...btnStyle, backgroundColor: '#fcd34d', color: '#333' }} onClick={addWhiteLaser}>白色光源</button>
             </div>
             {isHorizontal && <div style={{ width: '1px', background: '#cbd5e1', alignSelf: 'stretch' }} />}
             <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -1114,22 +1138,12 @@ export default function App() {
           p2_orig = transform.applyToPoint(end)
         }
 
-        const wl = (laser.meta && laser.meta.wavelength) ? Number(laser.meta.wavelength) : 532
+        const isWhiteLight = laser.meta?.isWhiteLight === true
+        const wl_meta = (laser.meta && laser.meta.wavelength) ? Number(laser.meta.wavelength) : 532
+        const wls = isWhiteLight ? [400, 440, 480, 520, 560, 600, 640, 680, 720] : [wl_meta]
+
         const rayCount = (laser.meta && laser.meta.rayCount !== undefined) ? Math.max(1, Number(laser.meta.rayCount)) : 1
         const beamWidth = (laser.meta && laser.meta.beamWidth !== undefined) ? Number(laser.meta.beamWidth) : 40
-        
-        let rayColor = 'green'
-        if (wl < 450) rayColor = 'violet'
-        else if (wl < 500) rayColor = 'blue'
-        else if (wl < 550) rayColor = 'green'
-        else if (wl < 600) rayColor = 'yellow'
-        else if (wl < 650) rayColor = 'orange'
-        else rayColor = 'red'
-
-        // 屈折率の分散モデル
-        const n_base = 1.5
-        const n_wl = 1.5 + (532 - wl) * 0.0001
-        const f_dispersion_ratio = (n_base - 1) / (n_wl - 1)
 
         let V_dir_orig = { x: p2_orig.x - p1_orig.x, y: p2_orig.y - p1_orig.y }
         let len_orig = Math.sqrt(V_dir_orig.x * V_dir_orig.x + V_dir_orig.y * V_dir_orig.y)
@@ -1138,10 +1152,22 @@ export default function App() {
         let V_orig = { x: V_dir_orig.x / len_orig, y: V_dir_orig.y / len_orig }
         let U_orig = { x: -V_orig.y, y: V_orig.x } // 法線ベクトル（進行方向に垂直）
 
-        // (既存光線の削除は一括で行っているため不要)
         const laserBaseId = laser.id.replace('shape:', '')
 
-        for (let rayIdx = 0; rayIdx < rayCount; rayIdx++) {
+        for (const wl of wls) {
+          let rayColor = 'green'
+          if (wl < 430) rayColor = 'violet'
+          else if (wl < 480) rayColor = 'blue'
+          else if (wl < 550) rayColor = 'green'
+          else if (wl < 590) rayColor = 'yellow'
+          else if (wl < 630) rayColor = 'orange'
+          else rayColor = 'red'
+
+          const n_base = 1.5
+          const n_wl = 1.5 + (532 - wl) * 0.0001
+          const f_dispersion_ratio = (n_base - 1) / (n_wl - 1)
+
+          for (let rayIdx = 0; rayIdx < rayCount; rayIdx++) {
           let p1 = { ...p1_orig }
           let p2 = { ...p2_orig }
 
@@ -1159,7 +1185,7 @@ export default function App() {
           const queue = [{
             P: p1,
             V: initialV,
-            branchId: `${rayIdx}`,
+            branchId: isWhiteLight ? `${rayIdx}-wl${wl}` : `${rayIdx}`,
             depth: 0,
             startAbs: p1,
             isFirstBranch: true
@@ -1537,6 +1563,7 @@ export default function App() {
             }
           } // end while (queue.length > 0)
         } // end rayIdx loop
+      } // end wls loop
     } // end laser loop
     }
 
