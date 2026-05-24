@@ -368,7 +368,7 @@ function CustomUI({ editor }: { editor: any }) {
       props: {
         geo: 'rectangle',
         w: 80,
-        h: 40,
+        h: 60,
         color: 'black',
         fill: 'solid',
       },
@@ -390,7 +390,7 @@ function CustomUI({ editor }: { editor: any }) {
       props: {
         geo: 'rectangle',
         w: 80,
-        h: 40,
+        h: 60,
         color: 'black',
         fill: 'solid',
       },
@@ -398,7 +398,7 @@ function CustomUI({ editor }: { editor: any }) {
         isOpticsLaser: true,
         wavelength: 532,
         rayCount: 5,
-        beamWidth: 40
+        beamWidth: 60
       }
     })
   }
