@@ -1,0 +1,674 @@
+import { useState, useEffect } from 'react'
+import {
+  Tldraw,
+  useEditor,
+  useValue,
+  getIndexAbove,
+  IndexKey,
+  ShapeUtil,
+  SVGContainer,
+  Rectangle2d,
+  TLShape,
+} from 'tldraw'
+import 'tldraw/tldraw.css'
+
+// --- Custom Lens Shape Definition ---
+const LENS_SHAPE_TYPE = 'optics-lens' as const
+
+declare module 'tldraw' {
+  interface TLGlobalShapePropsMap {
+    'optics-lens': {
+      w: number
+      h: number
+      focalLength: number
+      lensType: 'double-convex' | 'double-concave' | 'plano-convex' | 'plano-concave'
+    }
+    'optics-mirror': {
+      w: number
+      h: number
+      focalLength?: number
+      mirrorType: 'flat' | 'curved'
+    }
+  }
+}
+
+export type OpticsLensShape = TLShape<'optics-lens'>
+
+export class OpticsLensUtil extends ShapeUtil<OpticsLensShape> {
+  static override type = LENS_SHAPE_TYPE
+
+  override canBind = () => false
+  override canEdit = () => false
+  override canResize = () => false
+
+  override getDefaultProps(): OpticsLensShape['props'] {
+    return {
+      w: 40,
+      h: 160,
+      focalLength: 150,
+      lensType: 'double-convex',
+    }
+  }
+
+  override getGeometry(shape: OpticsLensShape) {
+    return new Rectangle2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true,
+    })
+  }
+
+  override component(shape: OpticsLensShape) {
+    const { w, h, lensType, focalLength } = shape.props
+
+    let pathD = ''
+    if (lensType === 'double-convex') {
+      let offset = (150 / focalLength) * (w / 2)
+      if (offset < -w * 0.9) offset = -w * 0.9
+      pathD = `M ${w / 2} 0 Q ${w / 2 + offset} ${h / 2} ${w / 2} ${h} Q ${w / 2 - offset} ${h / 2} ${w / 2} 0 Z`
+    } else if (lensType === 'double-concave') {
+      let inward = -(150 / focalLength) * (w / 3)
+      if (inward > w * 0.45) inward = w * 0.45
+      pathD = `M 0 0 L ${w} 0 Q ${w - inward} ${h / 2} ${w} ${h} L 0 ${h} Q ${inward} ${h / 2} 0 0 Z`
+    } else if (lensType === 'plano-convex') {
+      let offset = (300 / focalLength) * (w * 1.5)
+      if (offset < -w * 0.1) offset = -w * 0.1
+      pathD = `M 0 0 L 0 ${h} Q ${offset} ${h / 2} 0 0 Z`
+    } else if (lensType === 'plano-concave') {
+      let inward = -(300 / focalLength) * (w / 3)
+      if (inward > w * 0.9) inward = w * 0.9
+      pathD = `M 0 0 L ${w} 0 Q ${w - inward} ${h / 2} ${w} ${h} L 0 ${h} Z`
+    }
+
+    return (
+      <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          <path
+            d={pathD}
+            fill="rgba(59, 130, 246, 0.25)"
+            stroke="#2563eb"
+            strokeWidth={2}
+          />
+        </svg>
+      </SVGContainer>
+    )
+  }
+
+  override indicator(shape: OpticsLensShape) {
+    return <rect width={shape.props.w} height={shape.props.h} fill="none" stroke="#2563eb" strokeWidth={1.5} />
+  }
+
+  override getIndicatorPath() {
+    return undefined
+  }
+}
+
+// --- Custom Mirror Shape Definition ---
+const MIRROR_SHAPE_TYPE = 'optics-mirror' as const
+
+export type OpticsMirrorShape = TLShape<'optics-mirror'>
+
+export class OpticsMirrorUtil extends ShapeUtil<OpticsMirrorShape> {
+  static override type = MIRROR_SHAPE_TYPE
+
+  override canBind = () => false
+  override canEdit = () => false
+  override canResize = () => false
+
+  override getDefaultProps(): OpticsMirrorShape['props'] {
+    return {
+      w: 20,
+      h: 160,
+      mirrorType: 'flat',
+    }
+  }
+
+  override getGeometry(shape: OpticsMirrorShape) {
+    return new Rectangle2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true,
+    })
+  }
+
+  override component(shape: OpticsMirrorShape) {
+    const { w, h, mirrorType, focalLength } = shape.props
+
+    let pathD = ''
+    if (mirrorType === 'flat') {
+      pathD = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`
+    } else {
+      const f = focalLength || 150
+      let offset = -(150 / f) * w
+      if (offset < -w * 3) offset = -w * 3
+      if (offset > w * 3) offset = w * 3
+      pathD = `M ${w} 0 Q ${w + offset} ${h / 2} ${w} ${h}`
+    }
+
+    return (
+      <SVGContainer id={shape.id} style={{ pointerEvents: 'all' }}>
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          {mirrorType === 'flat' ? (
+            <g>
+              <path d={pathD} fill="#e2e8f0" stroke="#64748b" strokeWidth={2} />
+              <line x1={0} y1={0} x2={0} y2={h} stroke="#475569" strokeWidth={3} />
+            </g>
+          ) : (
+            <g>
+              <path d={pathD} fill="none" stroke="#64748b" strokeWidth={4} strokeLinecap="round" />
+              <path d={pathD} fill="none" stroke="#475569" strokeWidth={4} strokeDasharray="3,3" />
+            </g>
+          )}
+        </svg>
+      </SVGContainer>
+    )
+  }
+
+  override indicator(shape: OpticsMirrorShape) {
+    return <rect width={shape.props.w} height={shape.props.h} fill="none" stroke="#64748b" strokeWidth={1.5} />
+  }
+
+  override getIndicatorPath() {
+    return undefined
+  }
+}
+
+const customShapeUtils = [OpticsLensUtil, OpticsMirrorUtil]
+
+// --- CustomUI Component ---
+function CustomUI() {
+  const editor = useEditor()
+  const selectedShapes = useValue('selected shapes', () => editor.getSelectedShapes(), [editor])
+  const selectedOptics = selectedShapes.filter((s: any) => s.type === 'optics-lens' || (s.type === 'optics-mirror' && s.props.mirrorType === 'curved'))
+
+  // 各種レンズを追加するマクロ
+  const addDoubleConvex = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-lens',
+      x: center.x - 20,
+      y: center.y - 80,
+      props: {
+        w: 40,
+        h: 160,
+        focalLength: 150,
+        lensType: 'double-convex',
+      },
+    })
+  }
+
+  const addDoubleConcave = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-lens',
+      x: center.x - 20,
+      y: center.y - 80,
+      props: {
+        w: 40,
+        h: 160,
+        focalLength: -150,
+        lensType: 'double-concave',
+      },
+    })
+  }
+
+  const addPlanoConvex = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-lens',
+      x: center.x - 15,
+      y: center.y - 80,
+      props: {
+        w: 30,
+        h: 160,
+        focalLength: 300,
+        lensType: 'plano-convex',
+      },
+    })
+  }
+
+  const addPlanoConcave = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-lens',
+      x: center.x - 15,
+      y: center.y - 80,
+      props: {
+        w: 30,
+        h: 160,
+        focalLength: -300,
+        lensType: 'plano-concave',
+      },
+    })
+  }
+
+  // 鏡を追加するマクロ
+  const addFlatMirror = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-mirror',
+      x: center.x - 10,
+      y: center.y - 80,
+      props: {
+        w: 20,
+        h: 160,
+        mirrorType: 'flat',
+      },
+    })
+  }
+
+  const addConcaveMirror = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-mirror',
+      x: center.x - 20,
+      y: center.y - 80,
+      props: {
+        w: 20,
+        h: 160,
+        focalLength: 150,
+        mirrorType: 'curved',
+      },
+    })
+  }
+
+  const addConvexMirror = () => {
+    const center = editor.getViewportPageBounds().center
+    editor.createShape({
+      type: 'optics-mirror',
+      x: center.x - 20,
+      y: center.y - 80,
+      props: {
+        w: 20,
+        h: 160,
+        focalLength: -150,
+        mirrorType: 'curved',
+      },
+    })
+  }
+
+  // ボタンのデザイン設定
+  const btnStyle = {
+    padding: '8px 12px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    color: 'white',
+    border: 'none', 
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+    width: '100%',
+    marginBottom: '8px'
+  }
+
+  return (
+    <>
+      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000, width: 180, background: 'rgba(255,255,255,0.95)', padding: 12, borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '8px', color: '#333', textAlign: 'center' }}>レンズを追加</div>
+        <button style={{ ...btnStyle, backgroundColor: '#2563eb' }} onClick={addDoubleConvex}>
+          両凸レンズ
+        </button>
+        <button style={{ ...btnStyle, backgroundColor: '#1d4ed8' }} onClick={addDoubleConcave}>
+          両凹レンズ
+        </button>
+        <button style={{ ...btnStyle, backgroundColor: '#3b82f6' }} onClick={addPlanoConvex}>
+          平凸レンズ
+        </button>
+        <button style={{ ...btnStyle, backgroundColor: '#60a5fa' }} onClick={addPlanoConcave}>
+          平凹レンズ
+        </button>
+
+        <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }}></div>
+        <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '8px', color: '#333', textAlign: 'center' }}>鏡を追加</div>
+        <button style={{ ...btnStyle, backgroundColor: '#64748b' }} onClick={addFlatMirror}>
+          平面鏡
+        </button>
+        <button style={{ ...btnStyle, backgroundColor: '#475569' }} onClick={addConcaveMirror}>
+          凹面鏡
+        </button>
+        <button style={{ ...btnStyle, backgroundColor: '#334155' }} onClick={addConvexMirror}>
+          凸面鏡
+        </button>
+      </div>
+
+      {selectedOptics.length === 1 && (
+        <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'rgba(255,255,255,0.95)', padding: '12px 24px', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '120px' }}>
+            焦点距離: {selectedOptics[0].props.focalLength}
+          </label>
+          <input
+            type="range"
+            min={-500}
+            max={500}
+            step={10}
+            value={selectedOptics[0].props.focalLength || 150}
+            onChange={(e) => {
+              let val = Number(e.target.value)
+              if (val === 0) val = 10 // 0除算防止
+              editor.updateShape({
+                id: selectedOptics[0].id,
+                type: selectedOptics[0].type,
+                props: { focalLength: val }
+              })
+            }}
+            style={{ width: '200px', cursor: 'pointer' }}
+          />
+        </div>
+      )}
+    </>
+  )
+}
+
+// --- Main App Component ---
+export default function App() {
+  const [editor, setEditor] = useState<any>(null)
+
+  useEffect(() => {
+    if (!editor) return
+
+    const updateRays = () => {
+      const shapes = editor.getCurrentPageShapes()
+      const lasers = shapes.filter((s: any) => s.type === 'arrow')
+      const lenses = shapes.filter((s: any) => s.type === 'optics-lens')
+      const mirrors = shapes.filter((s: any) => s.type === 'optics-mirror')
+      const laserIds = new Set(lasers.map((l: any) => l.id))
+
+      // レーザーが存在しない古い光線を削除する
+      const existingRays = shapes.filter((s: any) => s.id.startsWith('shape:ray-'))
+      const raysToDelete = existingRays
+        .filter((r: any) => {
+          const laserId = r.id.replace('shape:ray-', '')
+          return !laserIds.has(laserId)
+        })
+        .map((r: any) => r.id)
+      
+      if (raysToDelete.length > 0) {
+        editor.deleteShapes(raysToDelete)
+      }
+
+      // 各レーザーの光線追跡
+      for (const laser of lasers) {
+        const transform = editor.getShapePageTransform(laser.id)
+        if (!transform) continue
+
+        const start = laser.props.start || { x: 0, y: 0 }
+        const end = laser.props.end || { x: 100, y: 0 }
+        const p1 = transform.applyToPoint(start)
+        const p2 = transform.applyToPoint(end)
+
+        let P = { ...p1 } // 光線の現在地（最初はレーザーの末尾）
+        let V_dir = { x: p2.x - p1.x, y: p2.y - p1.y }
+        let len = Math.sqrt(V_dir.x * V_dir.x + V_dir.y * V_dir.y)
+        if (len < 5) continue
+
+        let V = { x: V_dir.x / len, y: V_dir.y / len } // 単位方向ベクトル
+
+        // 光線パスの点リスト（p1基準の相対座標）
+        const relativePoints: Array<{ x: number; y: number }> = [{ x: 0, y: 0 }]
+        
+        let currentDepth = 0
+        const maxDepth = 10 // 少し余裕を持たせる
+
+        while (currentDepth < maxDepth) {
+          let closestIntersection: {
+            t: number
+            pt: { x: number; y: number }
+            type: 'lens' | 'mirror'
+            shape: any
+            A: { x: number; y: number }
+            B: { x: number; y: number }
+          } | null = null
+
+          // すべてのレンズについて一番近い交点を探す
+          for (const lens of lenses) {
+            const lTransform = editor.getShapePageTransform(lens.id)
+            if (!lTransform) continue
+
+            const lw = lens.props.w || 40
+            const lh = lens.props.h || 160
+
+            // レンズの軸は常にy軸に沿って描画されるため固定
+            const localA = { x: lw / 2, y: 0 }
+            const localB = { x: lw / 2, y: lh }
+
+            const A = lTransform.applyToPoint(localA)
+            const B = lTransform.applyToPoint(localB)
+
+            // 光線とレンズ線分の交点計算
+            const segDx = B.x - A.x
+            const segDy = B.y - A.y
+            const det = V.y * segDx - V.x * segDy
+
+            if (Math.abs(det) > 1e-6) {
+              const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
+              const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
+
+              if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
+                if (!closestIntersection || t < closestIntersection.t) {
+                  closestIntersection = {
+                    t,
+                    pt: { x: P.x + t * V.x, y: P.y + t * V.y },
+                    type: 'lens',
+                    shape: lens,
+                    A,
+                    B
+                  }
+                }
+              }
+            }
+          }
+
+          // すべての鏡について一番近い交点を探す
+          for (const mirror of mirrors) {
+            const mTransform = editor.getShapePageTransform(mirror.id)
+            if (!mTransform) continue
+
+            const mw = mirror.props.w || 20
+            const mh = mirror.props.h || 160
+
+            // 描画と反射面を完全に一致させる
+            let localA = { x: 0, y: 0 }
+            let localB = { x: 0, y: mh }
+            
+            if (mirror.props.mirrorType === 'flat') {
+              localA = { x: 0, y: 0 }
+              localB = { x: 0, y: mh }
+            } else {
+              // 曲面鏡の場合は両端を結ぶ直線(弦)を交差判定に使用
+              localA = { x: mw, y: 0 }
+              localB = { x: mw, y: mh }
+            }
+
+            const A = mTransform.applyToPoint(localA)
+            const B = mTransform.applyToPoint(localB)
+
+            // 交点計算
+            const segDx = B.x - A.x
+            const segDy = B.y - A.y
+            const det = V.y * segDx - V.x * segDy
+
+            if (Math.abs(det) > 1e-6) {
+              const t = (-segDy * (A.x - P.x) + segDx * (A.y - P.y)) / det
+              const u = (V.x * (A.y - P.y) - V.y * (A.x - P.x)) / det
+
+              if (t >= 1e-3 && u >= 0.0 && u <= 1.0) {
+                if (!closestIntersection || t < closestIntersection.t) {
+                  closestIntersection = {
+                    t,
+                    pt: { x: P.x + t * V.x, y: P.y + t * V.y },
+                    type: 'mirror',
+                    shape: mirror,
+                    A,
+                    B
+                  }
+                }
+              }
+            }
+          }
+
+          if (!closestIntersection) {
+            // 交点がない場合は画面外へ光線を伸ばして終了
+            const endPt = { x: P.x + V.x * 2000, y: P.y + V.y * 2000 }
+            relativePoints.push({ x: endPt.x - p1.x, y: endPt.y - p1.y })
+            break
+          }
+
+          const { pt: I, type: hitType, shape: hitShape, A, B } = closestIntersection
+          relativePoints.push({ x: I.x - p1.x, y: I.y - p1.y })
+
+          if (hitType === 'lens') {
+            // 屈折（薄いレンズの式）
+            const lw = hitShape.props.w || 40
+            const lh = hitShape.props.h || 160
+            const lTransform = editor.getShapePageTransform(hitShape.id)
+            const C = lTransform.applyToPoint({ x: lw / 2, y: lh / 2 })
+
+            // 接線ベクトルと法線ベクトル
+            const T = { x: B.x - A.x, y: B.y - A.y }
+            const tLen = Math.sqrt(T.x * T.x + T.y * T.y)
+            const T_norm = tLen > 1e-8 ? { x: T.x / tLen, y: T.y / tLen } : { x: 1, y: 0 }
+            let U = { x: -T_norm.y, y: T_norm.x } // 法線
+
+            // 進行方向に合わせて法線を反転
+            if (V.x * U.x + V.y * U.y < 0) {
+              U = { x: -U.x, y: -U.y }
+            }
+
+            // 焦点距離の取得 (カスタムプロパティから直接取得)
+            const f = hitShape.props.focalLength || 150
+
+            // レンズ中心からの交点の高さ（接線方向の距離）
+            const hInt = (I.x - C.x) * T_norm.x + (I.y - C.y) * T_norm.y
+
+            // 薄いレンズの偏角公式による傾きの変更
+            const sIn = (V.x * T_norm.x + V.y * T_norm.y) / (V.x * U.x + V.y * U.y)
+            const sOut = sIn - hInt / f
+
+            const VPrime_unnorm = {
+              x: U.x + sOut * T_norm.x,
+              y: U.y + sOut * T_norm.y
+            }
+            const vpLen = Math.sqrt(VPrime_unnorm.x * VPrime_unnorm.x + VPrime_unnorm.y * VPrime_unnorm.y)
+            const VPrime = vpLen > 1e-8 ? { x: VPrime_unnorm.x / vpLen, y: VPrime_unnorm.y / vpLen } : V
+
+            // 次の追跡ステップへ
+            P = { x: I.x + VPrime.x * 1e-2, y: I.y + VPrime.y * 1e-2 }
+            V = VPrime
+          } 
+          
+          else if (hitType === 'mirror') {
+            // 反射処理
+            const T = { x: B.x - A.x, y: B.y - A.y }
+            const tLen = Math.sqrt(T.x * T.x + T.y * T.y)
+            const T_norm = tLen > 1e-8 ? { x: T.x / tLen, y: T.y / tLen } : { x: 1, y: 0 }
+            let N = { x: -T_norm.y, y: T_norm.x } // 平面鏡の基準法線
+
+            if (hitShape.props.mirrorType === 'curved') {
+              const mh = hitShape.props.h || 160
+              const mTransform = editor.getShapePageTransform(hitShape.id)
+              // 曲面鏡の頂点は x=0, y=mh/2
+              const C = mTransform.applyToPoint({ x: 0, y: mh / 2 })
+              const f = hitShape.props.focalLength || 150
+              
+              // 凹面鏡・凸面鏡の反射方向傾斜補正 (R = 2f)
+              const hInt = (I.x - C.x) * T_norm.x + (I.y - C.y) * T_norm.y
+              N = {
+                x: N.x - (hInt / (2 * f)) * T_norm.x,
+                y: N.y - (hInt / (2 * f)) * T_norm.y
+              }
+              const nLen = Math.sqrt(N.x * N.x + N.y * N.y)
+              if (nLen > 1e-8) {
+                N = { x: N.x / nLen, y: N.y / nLen }
+              }
+            }
+
+            // 進行方向に正対させる
+            if (V.x * N.x + V.y * N.y > 0) {
+              N = { x: -N.x, y: -N.y }
+            }
+
+            const dotVal = V.x * N.x + V.y * N.y
+            const VPrime = {
+              x: V.x - 2 * dotVal * N.x,
+              y: V.y - 2 * dotVal * N.y
+            }
+
+            // 次の追跡ステップへ
+            P = { x: I.x + VPrime.x * 1e-2, y: I.y + VPrime.y * 1e-2 }
+            V = VPrime
+          }
+
+          currentDepth++
+        }
+
+        const rayId = `shape:ray-${laser.id}` as any
+
+        // tldrawのポイントリスト形式へ整形
+        const points: any = {}
+        let currentIndex = 'a1' as IndexKey
+        relativePoints.forEach((pt, index) => {
+          const key = `pt${index}`
+          points[key] = { id: key, index: currentIndex, x: pt.x, y: pt.y }
+          currentIndex = getIndexAbove(currentIndex)
+        })
+
+        const existingRay = editor.getShape(rayId)
+        if (existingRay) {
+          editor.deleteShape(rayId)
+        }
+        
+        editor.createShape({
+          id: rayId,
+          type: 'line',
+          x: p1.x,
+          y: p1.y,
+          props: {
+            color: 'red',
+            dash: 'solid',
+            size: 's',
+            spline: 'line', // 角を丸めない（完全な直線）
+            points
+          },
+          isLocked: true
+        })
+      }
+    }
+
+    // 初回実行
+    updateRays()
+
+    // 矢印（レーザー）またはレンズ、鏡が変更された時のみ光線を再計算する
+    let isUpdating = false
+    const unsubscribe = editor.store.listen((event: any) => {
+      if (isUpdating) return
+
+      const hasOpticsChanges =
+        Object.values(event.changes.added).some((s: any) => s.type === 'arrow' || s.type === 'optics-lens' || s.type === 'optics-mirror') ||
+        Object.values(event.changes.removed).some((s: any) => s.type === 'arrow' || s.type === 'optics-lens' || s.type === 'optics-mirror') ||
+        Object.values(event.changes.updated).some(([, newShape]: any) => newShape.type === 'arrow' || newShape.type === 'optics-lens' || newShape.type === 'optics-mirror')
+
+      if (hasOpticsChanges) {
+        isUpdating = true
+        try {
+          updateRays()
+        } finally {
+          isUpdating = false
+        }
+      }
+    }, { scope: 'document' })
+
+    return () => unsubscribe()
+
+  }, [editor])
+
+  return (
+    <div style={{ position: 'fixed', inset: 0 }}>
+      <Tldraw
+        shapeUtils={customShapeUtils}
+        onMount={(ed) => setEditor(ed)}
+      >
+        <CustomUI />
+      </Tldraw>
+    </div>
+  )
+}
