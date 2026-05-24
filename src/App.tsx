@@ -337,8 +337,8 @@ function CustomUI({ editor }: { editor: any }) {
   }
 
   const [isOpen, setIsOpen] = useState(false)
-  const [isHorizontal, setIsHorizontal] = useState(true)
-  const [pos, setPos] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight / 2 - 30 : 300 })
+  const [isHorizontal, setIsHorizontal] = useState(false)
+  const [pos, setPos] = useState({ x: 20, y: 20 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
