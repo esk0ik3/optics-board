@@ -334,14 +334,14 @@ function CustomUI() {
       {selectedOptics.length === 1 && (
         <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'rgba(255,255,255,0.95)', padding: '12px 24px', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '120px' }}>
-            焦点距離: {selectedOptics[0].props.focalLength}
+            焦点距離: {(selectedOptics[0] as any).props.focalLength}
           </label>
           <input
             type="range"
             min={-500}
             max={500}
             step={10}
-            value={selectedOptics[0].props.focalLength || 150}
+            value={(selectedOptics[0] as any).props.focalLength || 150}
             onChange={(e) => {
               let val = Number(e.target.value)
               if (val === 0) val = 10 // 0除算防止
@@ -349,7 +349,7 @@ function CustomUI() {
                 id: selectedOptics[0].id,
                 type: selectedOptics[0].type,
                 props: { focalLength: val }
-              })
+              } as any)
             }}
             style={{ width: '200px', cursor: 'pointer' }}
           />
