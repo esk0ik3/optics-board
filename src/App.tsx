@@ -1441,9 +1441,6 @@ export default function App() {
                     if (!closestIntersection || t < closestIntersection.t) {
                       const pt = { x: P.x + t * V.x, y: P.y + t * V.y }
                       let N = { x: (pt.x - C.x) / r, y: (pt.y - C.y) / r }
-                      if (V.x * N.x + V.y * N.y > 0) {
-                        N = { x: -N.x, y: -N.y }
-                      }
                       closestIntersection = { t, pt, type: 'water-drop', shape: drop, A: C, B: C, normal: N }
                     }
                   }
