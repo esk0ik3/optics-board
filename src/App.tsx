@@ -606,11 +606,23 @@ function CustomUI({ editor }: { editor: any }) {
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isOpen ? '12px' : '0' }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: isOpen && !isHorizontal ? 'flex-start' : 'center', 
+          marginBottom: isOpen ? '12px' : '0',
+          flexDirection: isOpen && !isHorizontal ? 'column' : 'row',
+          gap: isOpen && !isHorizontal ? '8px' : '0'
+        }}>
           <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>
-            🛠 光学素子メニュー
+            {isOpen && !isHorizontal ? '🛠 メニュー' : '🛠 光学素子メニュー'}
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            alignSelf: isOpen && !isHorizontal ? 'stretch' : 'auto', 
+            justifyContent: isOpen && !isHorizontal ? 'space-between' : 'flex-start' 
+          }}>
             {isOpen && (
               <button 
                 style={{ cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold' }}
