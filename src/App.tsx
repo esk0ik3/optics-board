@@ -69,23 +69,25 @@ export class OpticsLensUtil extends ShapeUtil<OpticsLensShape> {
     if (lensType === 'double-convex') {
       let offset = (150 / focalLength) * (w / 2)
       if (offset < -w * 0.9) offset = -w * 0.9
-      let edge = 6 // エッジの厚み
-      pathD = `M ${w / 2 - edge} 0 L ${w / 2 + edge} 0 Q ${w / 2 + offset} ${h / 2} ${w / 2 + edge} ${h} L ${w / 2 - edge} ${h} Q ${w / 2 - offset} ${h / 2} ${w / 2 - edge} 0 Z`
+      let edge = 16 // トップとボトムの幅
+      let capH = 20 // トップとボトムの丸みの深さ
+      pathD = `M ${w / 2 - edge} ${capH} Q ${w / 2} 0 ${w / 2 + edge} ${capH} Q ${w / 2 + offset} ${h / 2} ${w / 2 + edge} ${h - capH} Q ${w / 2} ${h} ${w / 2 - edge} ${h - capH} Q ${w / 2 - offset} ${h / 2} ${w / 2 - edge} ${capH} Z`
     } else if (lensType === 'double-concave') {
       let inward = -(150 / focalLength) * (w / 3)
       if (inward > w * 0.45) inward = w * 0.45
-      pathD = `M 0 0 L ${w} 0 Q ${w - inward} ${h / 2} ${w} ${h} L 0 ${h} Q ${inward} ${h / 2} 0 0 Z`
+      let capH = 15
+      pathD = `M 0 ${capH} Q ${w / 2} 0 ${w} ${capH} Q ${w - inward} ${h / 2} ${w} ${h - capH} Q ${w / 2} ${h} 0 ${h - capH} Q ${inward} ${h / 2} 0 ${capH} Z`
     } else if (lensType === 'plano-convex') {
       let offset = (300 / focalLength) * (w * 0.8)
       if (offset < -w * 0.8) offset = -w * 0.8
-      let edge = 6 // エッジの厚み
-      // 左側が平らで、右側が膨らむ（全体がw/2を中心に配置されるように調整）
-      pathD = `M ${w * 0.2} 0 L ${w * 0.2 + edge} 0 Q ${w * 0.2 + offset} ${h / 2} ${w * 0.2 + edge} ${h} L ${w * 0.2} ${h} Z`
+      let rightEdge = w * 0.2 + 25
+      let capH = 20
+      pathD = `M ${w * 0.2} ${capH} Q ${w * 0.2 + 10} 0 ${rightEdge} ${capH} Q ${w * 0.2 + offset} ${h / 2} ${rightEdge} ${h - capH} Q ${w * 0.2 + 10} ${h} ${w * 0.2} ${h - capH} Z`
     } else if (lensType === 'plano-concave') {
       let inward = -(300 / focalLength) * (w / 3)
       if (inward > w * 0.7) inward = w * 0.7
-      // 左側が平らで、右側がへこむ
-      pathD = `M ${w * 0.2} 0 L ${w} 0 Q ${w - inward} ${h / 2} ${w} ${h} L ${w * 0.2} ${h} Z`
+      let capH = 15
+      pathD = `M ${w * 0.2} ${capH} Q ${w * 0.6} 0 ${w} ${capH} Q ${w - inward} ${h / 2} ${w} ${h - capH} Q ${w * 0.6} ${h} ${w * 0.2} ${h - capH} Z`
     }
 
     return (
