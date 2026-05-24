@@ -512,6 +512,29 @@ function CustomUI({ editor }: { editor: any }) {
             </label>
           </div>
 
+          {selectedShape.type === 'arrow' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '90px' }}>
+                波長 (nm): {selectedShape.meta.wavelength ?? 532}
+              </label>
+              <input
+                type="range"
+                min={400}
+                max={700}
+                step={1}
+                value={selectedShape.meta.wavelength ?? 532}
+                onChange={(e) => {
+                  editor.updateShape({
+                    id: selectedShape.id,
+                    type: selectedShape.type,
+                    meta: { ...selectedShape.meta, wavelength: Number(e.target.value) }
+                  } as any)
+                }}
+                style={{ width: '150px', cursor: 'pointer' }}
+              />
+            </div>
+          )}
+
           {(selectedShape.type === 'optics-lens' || (selectedShape.type === 'optics-mirror' && selectedShape.props.mirrorType === 'curved')) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
               <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', minWidth: '90px' }}>
@@ -581,6 +604,22 @@ export default function App() {
         const end = { x: endProp.x ?? 100, y: endProp.y ?? 0 }
         const p1 = transform.applyToPoint(start)
         const p2 = transform.applyToPoint(end)
+
+        const wl = (laser.meta && laser.meta.wavelength) ? Number(laser.meta.wavelength) : 532
+        
+        let rayColor = 'green'
+        if (wl < 450) rayColor = 'violet'
+        else if (wl < 500) rayColor = 'blue'
+        else if (wl < 550) rayColor = 'green'
+        else if (wl < 600) rayColor = 'yellow'
+        else if (wl < 650) rayColor = 'orange'
+        else rayColor = 'red'
+
+        // 屈折率の分散モデル（波長が短いほど屈折率が高く、よく曲がる）
+        // 基準波長532nmでn=1.5とする
+        const n_base = 1.5
+        const n_wl = 1.5 + (532 - wl) * 0.0001
+        const f_dispersion_ratio = (n_base - 1) / (n_wl - 1)
 
         let P = { ...p1 } // 光線の現在地（最初はレーザーの末尾）
         let V_dir = { x: p2.x - p1.x, y: p2.y - p1.y }
@@ -720,15 +759,17 @@ export default function App() {
               U = { x: -U.x, y: -U.y }
             }
 
-            // 焦点距離の取得 (カスタムプロパティから直接取得)
+            // 焦点距離の取得
             const f = hitShape.props.focalLength || 150
+            // 波長による焦点距離の補正（色収差）
+            const f_eff = f * f_dispersion_ratio
 
             // レンズ中心からの交点の高さ（接線方向の距離）
             const hInt = (I.x - C.x) * T_norm.x + (I.y - C.y) * T_norm.y
 
             // 薄いレンズの偏角公式による傾きの変更
             const sIn = (V.x * T_norm.x + V.y * T_norm.y) / (V.x * U.x + V.y * U.y)
-            const sOut = sIn - hInt / f
+            const sOut = sIn - hInt / f_eff
 
             const VPrime_unnorm = {
               x: U.x + sOut * T_norm.x,
@@ -809,7 +850,7 @@ export default function App() {
           x: p1.x,
           y: p1.y,
           props: {
-            color: 'red',
+            color: rayColor,
             dash: 'solid',
             size: 's',
             spline: 'line', // 角を丸めない（完全な直線）
