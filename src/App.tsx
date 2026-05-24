@@ -721,6 +721,13 @@ function CustomUI({ editor }: { editor: any }) {
                   style={{ width: '100px', cursor: 'pointer' }}
                 />
               </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap', paddingLeft: '77px' }}>
+                <button style={{ ...btnStyle, padding: '2px 8px', fontSize: '11px', backgroundColor: '#8b5cf6', width: 'auto' }} onClick={() => handleWavelengthChange(405)}>405nm</button>
+                <button style={{ ...btnStyle, padding: '2px 8px', fontSize: '11px', backgroundColor: '#3b82f6', width: 'auto' }} onClick={() => handleWavelengthChange(450)}>450nm</button>
+                <button style={{ ...btnStyle, padding: '2px 8px', fontSize: '11px', backgroundColor: '#22c55e', width: 'auto' }} onClick={() => handleWavelengthChange(532)}>532nm</button>
+                <button style={{ ...btnStyle, padding: '2px 8px', fontSize: '11px', backgroundColor: '#ef4444', width: 'auto' }} onClick={() => handleWavelengthChange(650)}>650nm</button>
+              </div>
 
               {selectedShape.meta.rayCount !== undefined && (
                 <>
