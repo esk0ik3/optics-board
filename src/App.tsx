@@ -764,9 +764,13 @@ export default function App() {
           }
 
           if (!closestIntersection) {
-            // 交点がない場合は画面外へ光線を伸ばして終了
-            const endPt = { x: P.x + V.x * 2000, y: P.y + V.y * 2000 }
-            relativePoints.push({ x: endPt.x - p1.x, y: endPt.y - p1.y })
+            if (currentDepth === 0) {
+              relativePoints.length = 0
+            } else {
+              // 交点がない場合は画面外へ光線を伸ばして終了
+              const endPt = { x: P.x + V.x * 2000, y: P.y + V.y * 2000 }
+              relativePoints.push({ x: endPt.x - p1.x, y: endPt.y - p1.y })
+            }
             break
           }
 
@@ -861,6 +865,14 @@ export default function App() {
         }
 
         const rayId = `shape:ray-${laser.id}` as any
+        const existingRay = editor.getShape(rayId)
+
+        if (relativePoints.length <= 1) {
+          if (existingRay) {
+            editor.deleteShape(rayId)
+          }
+          continue
+        }
 
         // tldrawのポイントリスト形式へ整形
         const points: any = {}
@@ -871,7 +883,6 @@ export default function App() {
           currentIndex = getIndexAbove(currentIndex)
         })
 
-        const existingRay = editor.getShape(rayId)
         if (existingRay) {
           editor.deleteShape(rayId)
         }
